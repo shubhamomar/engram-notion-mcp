@@ -1,6 +1,6 @@
 [project]
 name = "better-notion-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "A better Notion integration for AI agents"
 dependencies = [
     "mcp[fastmcp]",

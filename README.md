@@ -2,14 +2,7 @@
 
 A powerful Model Context Protocol (MCP) server that connects your AI agents (Claude, Cursor, etc.) directly to your Notion workspace.
 
-<div align="center">
-  <a href="https://github.com/shubhamomar/better-notion-mcp/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/shubhamomar/better-notion-mcp?color=blue&labelColor=black&style=for-the-badge" alt="License">
-  </a>
-  <a href="https://pypi.org/project/better-notion-mcp/">
-    <img src="https://img.shields.io/pypi/v/better-notion-mcp?color=blue&labelColor=black&style=for-the-badge" alt="PyPI">
-  </a>
-</div>
+
 
 ## Introduction
 
@@ -27,78 +20,35 @@ A powerful Model Context Protocol (MCP) server that connects your AI agents (Cla
 - 🔔 **Real-time Alerts**: Optional Telegram integration for push notifications from your agent.
 - 🌍 **Cross-Platform**: Configurable for Mac, Windows, and Linux.
 
-## Getting Started
+## Configuration
 
-### Prerequisites
+### 1. Prerequisites
+- **Notion Token**: [My Integrations](https://www.notion.so/my-integrations) -> New Integration -> Copy Secret.
+- **Page ID**: Copy ID from the URL of your root page -> Connect page to your integration.
 
-You need a **Notion Internal Integration Token** and a **Page ID**:
+### 2. Add to Claude Desktop / Cursor
+Add the following to your `claude_desktop_config.json` (Claude) or `mcp.json` (VS Code/Cursor).
 
-1.  **Create Integration**: Go to [Notion My Integrations](https://www.notion.so/my-integrations) -> New Integration -> Submit.
-2.  **Get Token**: Copy the "Internal Integration Secret" (`NOTION_API_KEY`).
-3.  **Get Page ID**: Open the Notion page you want to use as the root. Copy the alphanumerics from the URL.
-4.  **Connect**: Click "..." on that page -> **Connect to** -> Select your new integration.
-
-### Installation
-
-Choose your preferred installation method:
-
-#### `uv` (Recommended)
-```bash
-uv tool install better-notion-mcp
-```
-
-#### `pipx` (Windows/Mac/Linux)
-```bash
-pipx install better-notion-mcp
-```
-
-#### `pip`
-```bash
-pip install better-notion-mcp
-```
-
-### Configuration
-
-You can configure the server using environment variables.
-
-| Variable | Description | Required |
-| :--- | :--- | :---: |
-| `NOTION_API_KEY` | Your Notion Integration Secret. | ✅ |
-| `NOTION_PAGE_ID` | The ID of the root page for creating/listing content. | ✅ |
-| `TELEGRAM_BOT_TOKEN` | Token from @BotFather for alerts. | ❌ |
-| `TELEGRAM_CHAT_ID` | Your Chat ID for receiving alerts. | ❌ |
-| `AGENT_MEMORY_PATH` | Path to the local SQLite DB (defaults to user home). | ❌ |
-
-## Client Setup
-
-### Claude Desktop
-
-Add this to your `claude_desktop_config.json`:
-
-<details>
-<summary><strong>MacOS</strong>: <code>~/Library/Application Support/Claude/claude_desktop_config.json</code></summary>
-
+**Using `uvx` (Fastest, no install needed)**
 ```json
 {
   "mcpServers": {
     "notion": {
-      "command": "uv",
-      "args": ["tool", "run", "better-notion-mcp"],
+      "command": "uvx",
+      "args": ["better-notion-mcp"],
       "env": {
         "NOTION_API_KEY": "secret_...",
         "NOTION_PAGE_ID": "page_id_...",
         "TELEGRAM_BOT_TOKEN": "bot_token_...",
-        "TELEGRAM_CHAT_ID": "chat_id_..."
+        "TELEGRAM_CHAT_ID": "chat_id_...",
+        "AGENT_MEMORY_PATH": "/path/to/db"
       }
     }
   }
 }
 ```
-</details>
 
-<details>
-<summary><strong>Windows</strong>: <code>%APPDATA%\Claude\claude_desktop_config.json</code></summary>
-
+**Using `pipx` (Alternative)**
 ```json
 {
   "mcpServers": {
@@ -106,16 +56,14 @@ Add this to your `claude_desktop_config.json`:
       "command": "pipx",
       "args": ["run", "better-notion-mcp"],
       "env": {
-        "NOTION_API_KEY": "secret_...",
-        "NOTION_PAGE_ID": "page_id_...",
-        "TELEGRAM_BOT_TOKEN": "bot_token_...",
-        "TELEGRAM_CHAT_ID": "chat_id_..."
+        "NOTION_API_KEY": "..."
       }
     }
   }
 }
 ```
-</details>
+
+> **Note**: You can also `pip install better-notion-mcp` globally if you prefer, then just use `better-notion-mcp` as the command.
 
 ## Tools
 
@@ -174,7 +122,8 @@ The server exposes the following tools to your AI agent:
 
 </details>
 
-## Development
+<details>
+<summary><strong>Development</strong></summary>
 
 To contribute or run locally:
 
@@ -185,6 +134,8 @@ To contribute or run locally:
     export NOTION_API_KEY=...
     better-notion-mcp
     ```
+
+</details>
 
 ## License
 
