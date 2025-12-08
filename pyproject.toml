@@ -1,12 +1,14 @@
 [project]
 name = "better-notion-mcp"
-version = "0.1.1"
+version = "0.1.2"
 description = "A better Notion integration for AI agents"
 dependencies = [
-    "mcp[fastmcp]",
+    "mcp",
+    "fastmcp",
     "notion-client",
     "python-dotenv"
 ]
+requires-python = ">=3.10"
 authors = [
   { name = "Shubham Omar", email = "shubhamomar53@gmail.com" },
 ]
