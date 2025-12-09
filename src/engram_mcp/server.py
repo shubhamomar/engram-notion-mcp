@@ -13,16 +13,44 @@ env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # Initialize FastMCP server
-mcp = FastMCP("Personal Knowledge Base")
+mcp = FastMCP("Engram")
 
 # Initialize Notion Client
 notion = Client(auth=os.getenv("NOTION_API_KEY"))
 
+import platform
+
 # Database Initialization
-DB_PATH = "agent_memory.db"
+def get_default_db_path() -> Path:
+    system = platform.system()
+    home = Path.home()
+
+    if system == "Windows":
+        base_path = home / ".engram" / "data"
+    elif system == "Darwin":  # macOS
+        base_path = home / "Library" / ".engram" / "data"
+    else:  # Linux/Unix
+        base_path = home / ".engram" / "data"
+
+    return base_path / "agent_memory.db"
+
+# Get DB_PATH from env or usage defaults
+env_db_path = os.getenv("AGENT_MEMORY_PATH")
+if env_db_path:
+    DB_PATH = Path(env_db_path)
+else:
+    DB_PATH = get_default_db_path()
+
+# Ensure directory exists
+try:
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+except Exception as e:
+    print(f"Warning: Could not create database directory {DB_PATH.parent}: {e}")
+    # Fallback to local directory if permission denied
+    DB_PATH = Path("agent_memory.db")
 
 def init_db():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(str(DB_PATH))
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS facts
                  (id INTEGER PRIMARY KEY AUTOINCREMENT, content TEXT)''')
@@ -88,7 +116,7 @@ def create_page(title: str, content: str = "") -> str:
         )
 
         page_url = response.get("url", "URL not found")
-        _save_to_db(f"Created Notion Page: {title} - {page_url}")
+        _save_to_db(f"Memory Trace Encoded: Created Page '{title}' - {page_url}")
         return f"Successfully created page '{title}'. URL: {page_url}"
     except Exception as e:
         return f"Error creating page: {str(e)}"
@@ -106,7 +134,7 @@ def update_page(page_id: str, title: str, content: str, type: str = "paragraph",
         language: The language for code blocks (e.g., 'mermaid', 'python'). Defaults to 'plain text'.
     """
     # 1. Save to internal memory
-    _save_to_db(f"Updated Page {page_id} - Title: {title}, Content: {content}")
+    _save_to_db(f"Synaptic Strengthening: Updated Page {page_id} - Title: {title}, Content: {content}")
 
     # Validate type
     if type not in ["paragraph", "bulleted_list_item", "code", "table"]:
