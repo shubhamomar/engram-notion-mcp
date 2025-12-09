@@ -13,7 +13,7 @@ env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # Initialize FastMCP server
-mcp = FastMCP("Personal Knowledge Base")
+mcp = FastMCP("Engram")
 
 # Initialize Notion Client
 notion = Client(auth=os.getenv("NOTION_API_KEY"))
@@ -26,11 +26,11 @@ def get_default_db_path() -> Path:
     home = Path.home()
 
     if system == "Windows":
-        base_path = home / ".personal-knowledge-base" / "data"
+        base_path = home / ".engram" / "data"
     elif system == "Darwin":  # macOS
-        base_path = home / "Library" / ".personal-knowledge-base" / "data"
+        base_path = home / "Library" / ".engram" / "data"
     else:  # Linux/Unix
-        base_path = home / ".personal-knowledge-base" / "data"
+        base_path = home / ".engram" / "data"
 
     return base_path / "agent_memory.db"
 
@@ -116,7 +116,7 @@ def create_page(title: str, content: str = "") -> str:
         )
 
         page_url = response.get("url", "URL not found")
-        _save_to_db(f"Created Notion Page: {title} - {page_url}")
+        _save_to_db(f"Memory Trace Encoded: Created Page '{title}' - {page_url}")
         return f"Successfully created page '{title}'. URL: {page_url}"
     except Exception as e:
         return f"Error creating page: {str(e)}"
@@ -134,7 +134,7 @@ def update_page(page_id: str, title: str, content: str, type: str = "paragraph",
         language: The language for code blocks (e.g., 'mermaid', 'python'). Defaults to 'plain text'.
     """
     # 1. Save to internal memory
-    _save_to_db(f"Updated Page {page_id} - Title: {title}, Content: {content}")
+    _save_to_db(f"Synaptic Strengthening: Updated Page {page_id} - Title: {title}, Content: {content}")
 
     # Validate type
     if type not in ["paragraph", "bulleted_list_item", "code", "table"]:

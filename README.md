@@ -1,29 +1,65 @@
-# better-notion-mcp
+# Engram
 
-A powerful Model Context Protocol (MCP) server that connects your AI agents (Claude, Cursor, etc.) directly to your Notion workspace.
+**The permanent and semantic memory layer for AI agents.**
+
+<div align="center">
+  <p><em>A better-notion-mcp bridge for effortless usage of Notion as a knowledge base.</em></p>
+</div>
 
 ## Introduction
 
-**better-notion-mcp** turns your Notion workspace into a semantic long-term memory and functional toolset for AI. Instead of just reading pages, it allows your agent to:
-- **Remember facts** in a local database for instant recall.
-- **Search & Query** your entire knowledge base.
-- **Create & Edit** pages with rich content (markdown, tables, mermaid, code).
-- **Notify** you via Telegram when important updates happen.
+**Engram** transforms your Notion workspace into a living, cognitive substrate for your AI agents.
+
+### Why Engram?
+According to neuropsychology, an **engram** is a unit of cognitive information imprinted in a physical substance, theorized to be the means by which memories are stored. This MCP server acts as that physical bridge, allowing your AI to:
+- **Encode Information**: Instantly store facts in a local vector-like "synaptic" database.
+- **Stimulate Recall**: Semantically search your entire knowledge base to retrieve context.
+- **Imprint Knowledge**: Create and edit rich Notion pages (markdown, tables, mermaid) as permanent memory traces.
+
+## Features
+
+| Feature Category | Tool Name | Description | Arguments |
+| :--- | :--- | :--- | :--- |
+| **Memory** | `remember_fact` | Store a text snippet (memory trace) in the local synaptic database. | `fact` (str) |
+| | `search_memory` | Semantically retrieve facts ("Stimulate Recall"). | `query` (str) |
+| | `get_recent_memories` | Retrieve the most recent memory traces. | `limit` (int) |
+| **Page Management** | `create_page` | Create a new sub-page under your root page. | `title` (str), `content` (str) |
+| | `list_sub_pages` | List all child pages of a specific page. | `parent_id` (str, optional) |
+| | `read_page_content` | Read and parse the content of a page as Markdown. | `page_id` (str) |
+| **Content Editing** | `update_page` | Append rich content (paragraphs, code, tables) to a page. | `page_id` (str), `title` (str), `content` (str), `type` (str), `language` (str) |
+| | `log_to_notion` | Fast way to append a daily log/note to the root page. | `title` (str), `content` (str) |
+| **Utilities** | `send_alert` | Send a push notification via Telegram. | `message` (str) |
 
 ## Prerequisites
 
-Before using this tool, ensure you have the following installed:
+Before using this tool, ensure you have **Python 3.10 or higher** installed.
 
-1.  **Python 3.10 or higher**: [Download here](https://www.python.org/downloads/).
-2.  **pipx** (Recommended): A tool to run Python applications in isolated environments.
-    *   **Windows**: `winget install pipx` (or `pip install pipx` then `pipx ensurepath`)
-    *   **macOS**: `brew install pipx`
-    *   **Linux**: `sudo apt install pipx`
-    *   *(Alternatively, you can use `uv` directly)*.
+<details>
+<summary><strong>Installing uv (Recommended)</strong></summary>
+
+We recommend using **uv** for the best experience.
+[Download uv here](https://docs.astral.sh/uv/)
+
+</details>
+
+<details>
+<summary><strong>Installing pipx (Alternative)</strong></summary>
+
+If you prefer `pipx`, install it using these universal commands (works on Windows, Mac, and Linux):
+
+```bash
+# 1. Install pipx (user scope)
+python3 -m pip install --user pipx
+
+# 2. Add to PATH
+python3 -m pipx ensurepath
+
+# 3. Verify
+pipx --version
+```
+</details>
 
 ## Configuration
-
-You need to set up your credentials before configuring the MCP client.
 
 ### 1. Notion Setup
 *   **Integration Token**: Go to [Notion My Integrations](https://www.notion.so/my-integrations) -> New Integration -> Copy the "Internal Integration Secret".
@@ -37,81 +73,51 @@ You need to set up your credentials before configuring the MCP client.
 | `NOTION_PAGE_ID` | The ID of the root page for creating/listing content. | - | ✅ |
 | `TELEGRAM_BOT_TOKEN` | Token from @BotFather for alerts. | Optional | ❌ |
 | `TELEGRAM_CHAT_ID` | Your Chat ID for receiving alerts. | Optional | ❌ |
-| `AGENT_MEMORY_PATH` | Path to the local SQLite DB. | **Win**: `C:\Users\<User>\.personal-knowledge-base\data\`<br>**Mac**: `~/Library/.personal-knowledge-base/data/` | ❌ |
+| `AGENT_MEMORY_PATH` | Path to the local SQLite DB. | **Win**: `C:\Users\<User>\.engram\data\`<br>**Mac**: `~/Library/.engram/data/` | ❌ |
 
 ## Client Setup
 
 Add the following to your MCP client configuration (e.g., `claude_desktop_config.json` for Claude Desktop).
 
-### Using `pipx` (Recommended)
-
-This method downloads and runs the latest version automatically.
+### Recommended: `uv`
 
 ```json
 {
   "mcpServers": {
-    "notion": {
-      "command": "pipx",
-      "args": ["run", "better-notion-mcp"],
-      "env": {
-        "NOTION_API_KEY": "secret_...",
-        "NOTION_PAGE_ID": "page_id_...",
-        "TELEGRAM_BOT_TOKEN": "bot_token_...",
-        "...": "..."
-      }
-    }
-  }
-}
-```
-
-### Using `uv`
-
-```json
-{
-  "mcpServers": {
-    "notion": {
+    "engram": {
       "command": "uvx",
-      "args": ["better-notion-mcp"],
+      "args": ["engram-mcp"],
       "env": {
         "NOTION_API_KEY": "secret_...",
         "NOTION_PAGE_ID": "page_id_...",
         "TELEGRAM_BOT_TOKEN": "bot_token_...",
-        "...": "..."
+        "TELEGRAM_CHAT_ID": "chat_id_...",
+        "AGENT_MEMORY_PATH": "/path/to/db"
       }
     }
   }
 }
 ```
-
-## Features & Tools
-
-Here is a detailed list of capabilities `better-notion-mcp` provides to your agent.
-
-| Feature Category | Tool Name | Description | Arguments |
-| :--- | :--- | :--- | :--- |
-| **Page Management** | `create_page` | Create a new sub-page under your root page. | `title` (str), `content` (str) |
-| | `list_sub_pages` | List all child pages of a specific page. | `parent_id` (str, optional) |
-| | `read_page_content` | Read and parse the content of a page as Markdown. | `page_id` (str) |
-| **Content Editing** | `update_page` | Append rich content (paragraphs, code, tables) to a page. | `page_id` (str), `title` (str), `content` (str), `type` (str), `language` (str) |
-| | `log_to_notion` | Fast way to append a daily log/note to the root page. | `title` (str), `content` (str) |
-| **Memory** | `remember_fact` | Store a text snippet in the local SQLite database. | `fact` (str) |
-| | `search_memory` | Semantic search over stored facts. | `query` (str) |
-| | `get_recent_memories` | Retrieve the most recent facts. | `limit` (int) |
-| **Utilities** | `send_alert` | Send a push notification via Telegram. | `message` (str) |
 
 <details>
-<summary><strong>Development</strong></summary>
+<summary><strong>Alternative: <code>pipx</code></strong></summary>
 
-To contribute or run locally:
-
-1.  **Clone**: `git clone https://github.com/shubhamomar/better-notion-mcp.git`
-2.  **Dev Install**: `uv pip install -e .` (or `pip install -e .`)
-3.  **Run**:
-    ```bash
-    export NOTION_API_KEY=...
-    better-notion-mcp
-    ```
-
+```json
+{
+  "mcpServers": {
+    "engram": {
+      "command": "pipx",
+      "args": ["run", "engram-mcp"],
+      "env": {
+        "NOTION_API_KEY": "secret_...",
+        "NOTION_PAGE_ID": "page_id_...",
+        "TELEGRAM_BOT_TOKEN": "bot_token_...",
+        "...": "..."
+      }
+    }
+  }
+}
+```
 </details>
 
 ## License
