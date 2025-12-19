@@ -1,0 +1,23 @@
+{
+  "name": "engram-mcp",
+  "version": "0.1.0",
+  "description": "NPM wrapper for Engram MCP - The permanent and semantic memory layer for AI agents",
+  "bin": {
+    "engram-mcp": "./bin.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Shubham Omar",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "notion",
+    "ai",
+    "memory",
+    "agent"
+  ]
+}
