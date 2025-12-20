@@ -47,6 +47,33 @@ To use Engram MCP, you need to set up your environment variables.
 | `TELEGRAM_CHAT_ID` | No | For `send_alert` tool. |
 | `AGENT_MEMORY_PATH` | No | Custom path for the SQLite memory database. |
 
+### 💡 Quick Setup Tips
+
+<details>
+<summary><strong>🔑 How to get Notion API Key</strong></summary>
+
+1.  Go to [Notion My Integrations](https://www.notion.so/my-integrations).
+2.  Click **New integration**.
+3.  Name it (e.g., "Engram MCP") and submit.
+4.  Copy the **Internal Integration Secret**. this is your `NOTION_API_KEY`.
+</details>
+
+<details>
+<summary><strong>🤖 How to get Telegram Bot Token & Chat ID</strong></summary>
+
+1.  **Bot Token**:
+    - Open Telegram and search for **@BotFather**.
+    - Send the command `/newbot`.
+    - Follow the prompts to name your bot.
+    - Copy the **HTTP API Token**.
+
+2.  **Chat ID**:
+    - Search for **@userinfobot** in Telegram.
+    - Click Start or send `/start`.
+    - It will reply with your **Id**. Copy this number.
+</details>
+
+
 ### Configuration Patterns
 
 #### 1. Minimal Setup (Flexible / Unbound)
@@ -61,10 +88,10 @@ You can omit `NOTION_PAGE_ID` to keep the agent "unbound". It will force the age
 #### 2. Multi-Page Support
 You don't need to configure an array of IDs. **Engram relies on Notion's native permissions.**
 To give the agent access to multiple specific pages:
-1.  Open the specific page in Notion.
-2.  Click the **... (three dots)** menu at the top-right of the page.
-3.  Scroll down to **Connect to** (or "Add connections").
-4.  Search for and select your integration (e.g., "Engram MCP").
+1.  Open any page in Notion.
+2.  Click the **... (three dots)** menu (top-right) -> **Connections**.
+3.  Look for the name you gave your integration (e.g., "Engram MCP").
+4.  Once connected, the agent can automatically see this page using the `list_accessible_pages` tool.
 5.  **Repeat this** for any other page you want the agent to see.
 
 ---
