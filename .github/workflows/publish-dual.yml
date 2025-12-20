@@ -1,0 +1,63 @@
+name: Publish Engram (Dual Stack)
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  # 1. Publish Python Version (PyPI)
+  publish-pypi:
+    runs-on: ubuntu-latest
+    if: inputs.target == 'python' || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for Python changes
+        id: check
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            src:
+              - 'python/**'
+
+      - name: Install uv
+        if: steps.check.outputs.src == 'true'
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Build and Publish
+        if: steps.check.outputs.src == 'true'
+        working-directory: ./python
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          uv build
+          uv publish
+
+  # 2. Publish Node Version (NPM)
+  publish-npm:
+    runs-on: ubuntu-latest
+    if: inputs.target == 'node' || github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for Node changes
+        id: check
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            src:
+              - 'node/**'
+
+      - name: Setup Node
+        if: steps.check.outputs.src == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install & Publish
+        if: steps.check.outputs.src == 'true'
+        working-directory: ./node
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+        run: |
+          npm ci
+          npm publish --access public

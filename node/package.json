@@ -1,0 +1,19 @@
+{
+  "name": "engram-mcp",
+  "version": "0.1.0",
+  "description": "Node.js implementation of the Engram MCP server",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "@notionhq/client": "^2.2.14",
+    "sqlite3": "^5.1.7",
+    "dotenv": "^16.4.5"
+  },
+  "bin": {
+    "engram-mcp": "./src/index.js"
+  }
+}
