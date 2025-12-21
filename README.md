@@ -1,6 +1,6 @@
-# Engram MCP - Semantic Memory for AI Agents
+# Engram Notion MCP - Semantic Memory for AI Agents
 
-**Engram MCP** is a powerful Model Context Protocol (MCP) server that gives your AI agents a **permanent, semantic memory**. It seamlessly integrates with [Notion](https://notion.so) to store, retrieve, and organize information, turning your workspace into an intelligent knowledge base.
+**Engram Notion MCP** is a powerful Model Context Protocol (MCP) server that gives your AI agents a **permanent, semantic memory**. It seamlessly integrates with [Notion](https://notion.so) to store, retrieve, and organize information, turning your workspace into an intelligent knowledge base.
 
 > 🧠 **Why Engram?**
 > AI Agents often suffer from amnesia. Engram solves this by providing a persistent memory layer backed by Notion's robust database structure.
@@ -37,7 +37,7 @@
 
 ## 🛠 Configuration
 
-To use Engram MCP, you need to set up your environment variables.
+To use Engram Notion MCP, you need to set up your environment variables.
 
 | Variable | Required | Description |
 | :--- | :--- | :--- |
@@ -54,7 +54,7 @@ To use Engram MCP, you need to set up your environment variables.
 
 1.  Go to [Notion My Integrations](https://www.notion.so/my-integrations).
 2.  Click **New integration**.
-3.  Name it (e.g., "Engram MCP") and submit.
+3.  Name it (e.g., "Engram Notion MCP") and submit.
 4.  Copy the **Internal Integration Secret**. this is your `NOTION_API_KEY`.
 </details>
 
@@ -90,14 +90,14 @@ You don't need to configure an array of IDs. **Engram relies on Notion's native 
 To give the agent access to multiple specific pages:
 1.  Open any page in Notion.
 2.  Click the **... (three dots)** menu (top-right) -> **Connections**.
-3.  Look for the name you gave your integration (e.g., "Engram MCP").
+3.  Look for the name you gave your integration (e.g., "Engram Notion MCP").
 4.  Once connected, the agent can automatically see this page using the `list_accessible_pages` tool.
 5.  **Repeat this** for any other page you want the agent to see.
 
 ---
 
 ## 🔌 Client Setup Instructions
-Configure your favorite AI tool to use Engram MCP. Click to expand your tool of choice:
+Configure your favorite AI tool to use Engram Notion MCP. Click to expand your tool of choice:
 
 <details>
 <summary><strong>🖥️ Desktop Apps (Claude Desktop, ChatGPT)</strong></summary>
