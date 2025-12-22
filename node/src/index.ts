@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -6,26 +6,24 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "@notionhq/client";
-import sqlite3 from "sqlite3";
+import { Database } from "bun:sqlite";
 import dotenv from "dotenv";
 import path from "path";
-import { fileURLToPath } from "url";
 import fs from "fs";
 import os from "os";
-import https from "https";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// Load .env from parent directory (monorepo structure implication or consistent with original script location expectation)
-dotenv.config({ path: path.join(__dirname, "../.env") });
+// Load .env from parent directory
+dotenv.config({ path: path.join(import.meta.dir, "../.env") });
 
 // Initialize Notion Client
-const notion = new Client({ auth: process.env.NOTION_API_KEY });
+const notionApiKey = process.env.NOTION_API_KEY;
+const notion = new Client({ auth: notionApiKey });
 
 // Database Initialization
-const get_default_db_path = () => {
+const get_default_db_path = (): string => {
   const system = os.platform();
   const home = os.homedir();
-  let basePath;
+  let basePath: string;
 
   if(system === "win32") {
     basePath = path.join(home, ".engram", "data");
@@ -38,7 +36,14 @@ const get_default_db_path = () => {
   return path.join(basePath, "agent_memory.db");
 };
 
-let DB_PATH = process.env.AGENT_MEMORY_PATH || get_default_db_path();
+// Handle optional env var and path expansion
+// Node/Bun usually handles ~ only if shell expands it, but here we can support explicit ~
+let envDbPath = process.env.AGENT_MEMORY_PATH;
+if(envDbPath && envDbPath.startsWith("~")) {
+  envDbPath = path.join(os.homedir(), envDbPath.slice(1));
+}
+
+let DB_PATH = envDbPath || get_default_db_path();
 
 // Ensure directory exists
 try {
@@ -48,49 +53,36 @@ try {
   DB_PATH = "agent_memory.db";
 }
 
-const db = new sqlite3.Database(DB_PATH);
+const db = new Database(DB_PATH, { create: true });
 
-const init_db = () => {
-  db.serialize(() => {
-    db.run(`CREATE VIRTUAL TABLE IF NOT EXISTS memory_index USING fts5(content, metadata, tokenize='porter')`, (err) => {
-      if(err) {
-        // Fallback
-        db.run(`CREATE TABLE IF NOT EXISTS memory_index (content TEXT, metadata TEXT)`);
-      }
-    });
-  });
+// Init DB with FTS5
+// Bun's SQLite usually supports FTS5.
+try {
+  db.run(`CREATE VIRTUAL TABLE IF NOT EXISTS memory_index USING fts5(content, metadata, tokenize='porter')`);
+} catch(e) {
+  // Fallback if FTS5 not supported (rare in bun standard build)
+  console.warn("FTS5 creation failed, falling back to standard table", e);
+  db.run(`CREATE TABLE IF NOT EXISTS memory_index (content TEXT, metadata TEXT)`);
+}
+
+const _save_to_db = (content: string, metadata: any = null) => {
+  try {
+    const meta_str = metadata ? JSON.stringify(metadata) : "{}";
+    const query = db.query("INSERT INTO memory_index (content, metadata) VALUES ($content, $metadata)");
+    query.run({ $content: content, $metadata: meta_str });
+  } catch(e) {
+    console.error(`Error saving to DB: ${e}`);
+  }
 };
 
-init_db();
-
-const _save_to_db = (content, metadata = null) => {
-  return new Promise((resolve, reject) => {
-    try {
-      // Create a fresh connection or use the existing one? Python code creates a new connection every time.
-      // SQLite in Node usually handles concurrency better with a single connection in WAL mode, but standard is single connection object.
-      // We will use the global `db` object here, assuming single-threaded event loop access.
-      const meta_str = metadata ? JSON.stringify(metadata) : "{}";
-      const stmt = db.prepare("INSERT INTO memory_index (content, metadata) VALUES (?, ?)");
-      stmt.run(content, meta_str, function(err) {
-        if(err) {
-          console.error(`Error saving to DB: ${err}`);
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-      stmt.finalize();
-    } catch(e) {
-      console.error(`Error saving to DB: ${e}`);
-      reject(e);
-    }
-  });
-};
+interface ToolArgs {
+  [key: string]: any;
+}
 
 // Tools implementation
-const tools = {
+const tools: Record<string, (args: ToolArgs) => Promise<string | string[]>> = {
   remember_fact: async ({ fact }) => {
-    await _save_to_db(fact, { type: "manual_fact", timestamp: new Date().toISOString() });
+    _save_to_db(fact, { type: "manual_fact", timestamp: new Date().toISOString() });
     return `Remembered: ${fact}`;
   },
 
@@ -101,18 +93,18 @@ const tools = {
     }
 
     try {
-      const children = [];
+      const children: any[] = [];
       if(content) {
         children.push({
           object: "block",
           type: "paragraph",
           paragraph: {
-            rich_text: [ { type: "text", text: { content: content } } ]
+            rich_text: [{ type: "text", text: { content: content } }]
           }
         });
       }
 
-      const response = await notion.pages.create({
+      const response: any = await notion.pages.create({
         parent: { page_id: target_parent },
         properties: {
           title: [
@@ -128,7 +120,6 @@ const tools = {
 
       const page_url = response.url || "URL not found";
 
-      // Spy Logging
       const log_content = `Created Page: ${title}. Content snippet: ${content.substring(0, 100)}`;
       const meta = {
         type: "create_page",
@@ -136,10 +127,10 @@ const tools = {
         url: page_url,
         timestamp: new Date().toISOString()
       };
-      await _save_to_db(log_content, meta);
+      _save_to_db(log_content, meta);
 
       return `Successfully created page '${title}'. URL: ${page_url}`;
-    } catch(e) {
+    } catch(e: any) {
       return `Error creating page: ${e.message}`;
     }
   },
@@ -153,19 +144,19 @@ const tools = {
       section_title: title,
       timestamp: new Date().toISOString()
     };
-    await _save_to_db(log_content, meta);
+    _save_to_db(log_content, meta);
 
-    const validTypes = [ "paragraph", "bulleted_list_item", "code", "table" ];
+    const validTypes = ["paragraph", "bulleted_list_item", "code", "table"];
     if(!validTypes.includes(type)) {
       return `Error: Invalid type '${type}'. Must be 'paragraph', 'bulleted_list_item', 'code', or 'table'.`;
     }
 
-    const children = [
+    const children: any[] = [
       {
         object: "block",
         type: "heading_2",
         heading_2: {
-          rich_text: [ { type: "text", text: { content: title } } ]
+          rich_text: [{ type: "text", text: { content: title } }]
         }
       }
     ];
@@ -176,17 +167,17 @@ const tools = {
         object: "block",
         type: "code",
         code: {
-          rich_text: [ { type: "text", text: { content: cleaned_content } } ],
+          rich_text: [{ type: "text", text: { content: cleaned_content } }],
           language: language
         }
       });
     } else if(type === "table") {
-      const rows = [];
+      const rows: string[][] = [];
       const lines = content.trim().split('\n');
       let has_header = false;
 
       for(let i = 0; i < lines.length; i++) {
-        const line = lines[ i ];
+        const line = lines[i];
         if(/^\s*\|?[\s\-:|]+\|?\s*$/.test(line)) {
           if(i === 1) has_header = true;
           continue;
@@ -203,14 +194,14 @@ const tools = {
 
       if(rows.length === 0) return "Error: Could not parse table content.";
 
-      const table_width = rows[ 0 ].length;
+      const table_width = rows[0].length;
       const table_children = rows.map(row => {
         while(row.length < table_width) row.push("");
         return {
           object: "block",
           type: "table_row",
           table_row: {
-            cells: row.map(cell => [ { type: "text", text: { content: cell } } ])
+            cells: row.map(cell => [{ type: "text", text: { content: cell } }])
           }
         };
       });
@@ -230,8 +221,8 @@ const tools = {
       children.push({
         object: "block",
         type: type,
-        [ type ]: {
-          rich_text: [ { type: "text", text: { content: content } } ]
+        [type]: {
+          rich_text: [{ type: "text", text: { content: content } }]
         }
       });
     }
@@ -239,7 +230,7 @@ const tools = {
     try {
       await notion.blocks.children.append({ block_id: page_id, children: children });
       return `Successfully updated page ${page_id}: ${title}`;
-    } catch(e) {
+    } catch(e: any) {
       return `Error updating page: ${e.message}`;
     }
   },
@@ -249,7 +240,6 @@ const tools = {
     if(!target_page) {
       return "Error: No page_id provided and NOTION_PAGE_ID not set.";
     }
-    // Re-use update_page logic
     return tools.update_page({ page_id: target_page, title, content, type, language });
   },
 
@@ -262,8 +252,8 @@ const tools = {
 
     try {
       const response = await notion.blocks.children.list({ block_id: target_id });
-      const pages = [];
-      for(const block of response.results) {
+      const pages: string[] = [];
+      for(const block of response.results as any[]) {
         if(block.type === "child_page") {
           pages.push(`- ${block.child_page.title} (ID: ${block.id})`);
         }
@@ -271,7 +261,7 @@ const tools = {
 
       if(pages.length === 0) return "No sub-pages found.";
       return pages.join("\n");
-    } catch(e) {
+    } catch(e: any) {
       return `Error listing sub-pages: ${e.message}`;
     }
   },
@@ -285,8 +275,6 @@ const tools = {
     }
 
     try {
-      // Using built-in https request for zero dependency http, or we could use fetch if node 18+
-      // Using fetch is cleaner.
       const response = await fetch(`https://api.telegram.org/bot${bot_token}/sendMessage`, {
         method: 'POST',
         headers: {
@@ -299,7 +287,7 @@ const tools = {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       return "Alert sent successfully.";
-    } catch(e) {
+    } catch(e: any) {
       return `Failed to send alert: ${e.message}`;
     }
   }
@@ -308,7 +296,7 @@ const tools = {
 const server = new Server(
   {
     name: "engram-notion-mcp",
-    version: "0.1.0",
+    version: "0.1.1",
   },
   {
     capabilities: {
@@ -328,7 +316,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             fact: { type: "string" },
           },
-          required: [ "fact" ],
+          required: ["fact"],
         },
       },
       {
@@ -341,7 +329,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             content: { type: "string" },
             parent_id: { type: "string" }
           },
-          required: [ "title" ],
+          required: ["title"],
         },
       },
       {
@@ -353,10 +341,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             page_id: { type: "string" },
             title: { type: "string" },
             content: { type: "string" },
-            type: { type: "string", enum: [ "paragraph", "bulleted_list_item", "code", "table" ], default: "paragraph" },
+            type: { type: "string", enum: ["paragraph", "bulleted_list_item", "code", "table"], default: "paragraph" },
             language: { type: "string", default: "plain text" }
           },
-          required: [ "page_id", "title", "content" ],
+          required: ["page_id", "title", "content"],
         },
       },
       {
@@ -367,11 +355,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             title: { type: "string" },
             content: { type: "string" },
-            type: { type: "string", enum: [ "paragraph", "bulleted_list_item", "code", "table" ], default: "paragraph" },
+            type: { type: "string", enum: ["paragraph", "bulleted_list_item", "code", "table"], default: "paragraph" },
             language: { type: "string", default: "plain text" },
             page_id: { type: "string" }
           },
-          required: [ "title", "content" ],
+          required: ["title", "content"],
         },
       },
       {
@@ -392,7 +380,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             message: { type: "string" }
           },
-          required: [ "message" ],
+          required: ["message"],
         },
       }
     ],
@@ -402,12 +390,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
-  if(tools[ name ]) {
+  if(tools[name]) {
+    const result = await tools[name](args as ToolArgs);
+    // Handle array result (from multiple blocks?) or string
+    const textContent = Array.isArray(result) ? result.join("\n") : result;
     return {
       content: [
         {
           type: "text",
-          text: await tools[ name ](args)
+          text: textContent
         }
       ]
     };

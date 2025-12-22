@@ -1,20 +1,23 @@
 {
   "name": "engram-notion-mcp",
   "version": "0.1.1",
-  "description": "Node.js implementation of the Engram Notion MCP server",
-  "main": "src/index.js",
+  "description": "Bun implementation of the Engram Notion MCP server",
+  "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "start": "node src/index.js",
-    "version": "node ../scripts/sync-version.js && git add ../python/pyproject.toml"
+    "start": "bun run src/index.ts",
+    "version": "bun run ../scripts/sync-version.js && git add ../python/pyproject.toml"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.1",
     "@notionhq/client": "^2.2.14",
-    "sqlite3": "^5.1.7",
     "dotenv": "^16.4.5"
   },
+  "devDependencies": {
+    "bun-types": "^1.1.0",
+    "typescript": "^5.0.0"
+  },
   "bin": {
-    "engram-notion-mcp": "src/index.js"
+    "engram-notion-mcp": "src/index.ts"
   }
 }

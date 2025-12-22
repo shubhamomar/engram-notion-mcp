@@ -37,7 +37,7 @@ def get_default_db_path() -> Path:
 # Get DB_PATH from env or usage defaults
 env_db_path = os.getenv("AGENT_MEMORY_PATH")
 if env_db_path:
-    DB_PATH = Path(env_db_path)
+    DB_PATH = Path(env_db_path).expanduser().resolve()
 else:
     DB_PATH = get_default_db_path()
 

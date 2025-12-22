@@ -108,7 +108,7 @@ Add this to your `claude_desktop_config.json` or `mcp.json`.
 ```json
 {
   "mcpServers": {
-    "engram": {
+    "engram-notion-mcp": {
       "command": "uvx",
       "args": ["engram-notion-mcp"],
       "env": {
@@ -129,7 +129,7 @@ Most VS Code environments use a `mcpServers` object in their settings.
 ```json
 {
   "mcpServers": {
-    "engram": {
+    "engram-notion-mcp": {
       "command": "uvx",
       "args": ["engram-notion-mcp"],
       "env": {
@@ -151,12 +151,12 @@ Most VS Code environments use a `mcpServers` object in their settings.
 
 **Gemini CLI:**
 ```bash
-gemini mcp add engram node "uvx engram-notion-mcp" -e NOTION_API_KEY=secret_...
+gemini mcp add engram-notion-mcp bunx "engram-notion-mcp" -e NOTION_API_KEY=<your_secret_key>
 ```
 
 **Claude Code:**
 ```bash
-export NOTION_API_KEY=secret_...
+export NOTION_API_KEY=<your_secret_key>
 claude --mcp engram-notion-mcp
 ```
 </details>
@@ -164,16 +164,16 @@ claude --mcp engram-notion-mcp
 <details>
 <summary><strong>🐍 Alternative: Python based UVX / PIPX</strong></summary>
 
-If you prefer `npx` or `pipx`:
+If you prefer `bunx` or `pipx`:
 
-**`npx` (Node.js):**
+**`bunx` (Bun):**
 
 ```json
 {
   "mcpServers": {
-    "engram": {
-      "command": "npx",
-      "args": ["-y", "engram-notion-mcp"],
+    "engram-notion-mcp": {
+      "command": "bunx",
+      "args": ["engram-notion-mcp"],
       "env": { ... }
     }
   }
@@ -187,7 +187,7 @@ If you prefer `npx` or `pipx`:
 ```json
 {
   "mcpServers": {
-    "engram": {
+    "engram-notion-mcp": {
       "command": "pipx",
       "args": ["run", "engram-notion-mcp"],
       "env": { ... }

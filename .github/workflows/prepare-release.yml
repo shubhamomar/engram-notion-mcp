@@ -22,10 +22,10 @@ jobs:
           token: ${{ secrets.PAT }} # Requires a PAT to push changes/tags back to protected branches
           fetch-depth: 0
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
         with:
-          node-version: '20'
+          bun-version: latest
 
       - name: Configure Git User
         run: |
@@ -35,10 +35,10 @@ jobs:
       - name: Bump Version & Sync
         working-directory: ./node
         run: |
-          # This runs npm version, which triggers the 'version' script in package.json
+          # This runs bun pm version, which triggers the 'version' script in package.json
           # The 'version' script runs sync-version.js and git adds the python file.
           # We use a custom message format requested by the user.
-          npm version ${{ inputs.version_type }} -m "[skip ci] [npm-auto-versioning] new released version v%s"
+          bun pm version ${{ inputs.version_type }} -m "[skip ci] [npm-auto-versioning] new released version v%s"
 
       - name: Push Changes
         run: git push origin HEAD:master --tags

@@ -32,7 +32,7 @@ jobs:
           uv build
           uv publish
 
-  # 2. Publish Node Version (NPM)
+  # 2. Publish Bun Version (NPM)
   publish-npm:
     runs-on: ubuntu-latest
     if: inputs.target == 'node' || github.event_name == 'push'
@@ -46,18 +46,17 @@ jobs:
             src:
               - 'node/**'
 
-      - name: Setup Node
+      - name: Setup Bun
         if: steps.check.outputs.src == 'true'
-        uses: actions/setup-node@v4
+        uses: oven-sh/setup-bun@v1
         with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
+          bun-version: latest
 
       - name: Install & Publish
         if: steps.check.outputs.src == 'true'
         working-directory: ./node
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
         run: |
-          npm ci
-          npm publish --access public
+          bun install
+          bun publish --access public

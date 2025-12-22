@@ -1,4 +1,4 @@
-# Engram Notion MCP - Semantic Memory for AI Agents (Node.js)
+# Engram Notion MCP - Semantic Memory for AI Agents (Bun)
 
 **Engram Notion MCP** is a powerful Model Context Protocol (MCP) server that gives your AI agents a **permanent, semantic memory**. It seamlessly integrates with [Notion](https://notion.so) to store, retrieve, and organize information, turning your workspace into an intelligent knowledge base.
 
@@ -96,7 +96,7 @@ To give the agent access to multiple specific pages:
 
 ---
 
-## 🔌 Client Setup Instructions
+## 🔌 Client Setup Instructions (Bun)
 Configure your favorite AI tool to use Engram Notion MCP. Click to expand your tool of choice:
 
 <details>
@@ -104,13 +104,13 @@ Configure your favorite AI tool to use Engram Notion MCP. Click to expand your t
 
 Add this to your `claude_desktop_config.json` or `mcp.json`.
 
-**Config for using `npx` (Recommended):**
+**Config for using `bunx` (Recommended):**
 ```json
 {
   "mcpServers": {
-    "engram": {
-      "command": "npx",
-      "args": ["-y", "engram-notion-mcp"],
+    "engram-notion-mcp": {
+      "command": "bunx",
+      "args": ["engram-notion-mcp"],
       "env": {
         "NOTION_API_KEY": "secret_your_key_here"
       }
@@ -129,9 +129,9 @@ Most VS Code environments use a `mcpServers` object in their settings.
 ```json
 {
   "mcpServers": {
-    "engram": {
-      "command": "npx",
-      "args": ["-y", "engram-notion-mcp"],
+    "engram-notion-mcp": {
+      "command": "bunx",
+      "args": ["engram-notion-mcp"],
       "env": {
         "NOTION_API_KEY": "secret_your_key_here"
       }
@@ -151,7 +151,7 @@ Most VS Code environments use a `mcpServers` object in their settings.
 
 **Gemini CLI:**
 ```bash
-gemini mcp add engram node "npx engram-notion-mcp" -e NOTION_API_KEY=secret_...
+gemini mcp add engram-notion-mcp bunx "engram-notion-mcp" -e NOTION_API_KEY=<your_secret_key>
 ```
 
 **Claude Code:**
@@ -171,7 +171,7 @@ If you prefer `uvx` or `pipx` or have strict Python environments:
 ```json
 {
   "mcpServers": {
-    "engram": {
+    "engram-notion-mcp": {
       "command": "uvx",
       "args": ["engram-notion-mcp"],
       "env": { ... }
@@ -187,7 +187,7 @@ If you prefer `uvx` or `pipx` or have strict Python environments:
 ```json
 {
   "mcpServers": {
-    "engram": {
+    "engram-notion-mcp": {
       "command": "pipx",
       "args": ["run", "engram-notion-mcp"],
       "env": { ... }
