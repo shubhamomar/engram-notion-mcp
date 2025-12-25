@@ -15,6 +15,10 @@ on:
         - python
         - node
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   # 1. Publish Python Version (PyPI)
   publish-pypi:
@@ -66,8 +70,6 @@ jobs:
       - name: Install & Publish
         if: steps.check.outputs.src == 'true' || github.event_name == 'workflow_dispatch'
         working-directory: ./node
-        env:
-          NPM_CONFIG_TOKEN: ${{ secrets.NPM_ACCESS_TOKEN }}
         run: |
           bun install
-          bun publish --access public
+          npm publish --provenance --access public

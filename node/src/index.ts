@@ -6,7 +6,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "@notionhq/client";
-import { Database } from "bun:sqlite";
+
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
@@ -53,22 +53,72 @@ try {
   DB_PATH = "agent_memory.db";
 }
 
-const db = new Database(DB_PATH, { create: true });
-
-// Init DB with FTS5
-// Bun's SQLite usually supports FTS5.
-try {
-  db.run(`CREATE VIRTUAL TABLE IF NOT EXISTS memory_index USING fts5(content, metadata, tokenize='porter')`);
-} catch(e) {
-  // Fallback if FTS5 not supported (rare in bun standard build)
-  console.warn("FTS5 creation failed, falling back to standard table", e);
-  db.run(`CREATE TABLE IF NOT EXISTS memory_index (content TEXT, metadata TEXT)`);
+// Database Interface
+interface DBAdapter {
+  query(sql: string): any; // Abstracted query preparation relative to implementation
+  run(params: any): void;  // Execution abstraction
 }
+
+const get_db_adapter = (dbPath: string): DBAdapter => {
+  const isBun = typeof Bun !== "undefined";
+
+  if(isBun) {
+    // runtime: Bun
+    // @ts-ignore
+    const { Database } = require("bun:sqlite");
+    const db = new Database(dbPath, { create: true });
+
+    // Init FTS5 for Bun
+    try {
+      db.run(`CREATE VIRTUAL TABLE IF NOT EXISTS memory_index USING fts5(content, metadata, tokenize='porter')`);
+    } catch(e) {
+      console.warn("FTS5 creation failed in Bun, falling back to standard table", e);
+      db.run(`CREATE TABLE IF NOT EXISTS memory_index (content TEXT, metadata TEXT)`);
+    }
+
+    return {
+      query: (sql: string) => {
+        const stmt = db.query(sql);
+        return {
+          run: (params: any) => stmt.run(params)
+        };
+      },
+      run: () => {} // Not needed for Bun's prepared stmt flow
+    };
+  } else {
+    // runtime: Node.js (via better-sqlite3)
+    console.log("\x1b[33m%s\x1b[0m", "ℹ️  Tip: This MCP server runs 3x faster with Bun! Try: bunx engram-notion-mcp");
+
+    // @ts-ignore
+    const Database = require("better-sqlite3");
+    const db = new Database(dbPath);
+
+    // Init FTS5 for Node (better-sqlite3 usually bundles it)
+    try {
+      db.prepare(`CREATE VIRTUAL TABLE IF NOT EXISTS memory_index USING fts5(content, metadata, tokenize='porter')`).run();
+    } catch(e) {
+      console.warn("FTS5 creation failed in Node, falling back to standard table", e);
+      db.prepare(`CREATE TABLE IF NOT EXISTS memory_index (content TEXT, metadata TEXT)`).run();
+    }
+
+    return {
+      query: (sql: string) => {
+        const stmt = db.prepare(sql);
+        return {
+          run: (params: any) => stmt.run(params)
+        }
+      },
+      run: () => {}
+    };
+  }
+};
+
+const dbAdapter = get_db_adapter(DB_PATH);
 
 const _save_to_db = (content: string, metadata: any = null) => {
   try {
     const meta_str = metadata ? JSON.stringify(metadata) : "{}";
-    const query = db.query("INSERT INTO memory_index (content, metadata) VALUES ($content, $metadata)");
+    const query = dbAdapter.query("INSERT INTO memory_index (content, metadata) VALUES ($content, $metadata)");
     query.run({ $content: content, $metadata: meta_str });
   } catch(e) {
     console.error(`Error saving to DB: ${e}`);
@@ -183,7 +233,7 @@ const tools: Record<string, (args: ToolArgs) => Promise<string | string[]>> = {
           continue;
         }
 
-        let cells = line.split('|').map(c => c.trim());
+        let cells = line.split('|').map((c: string) => c.trim());
         if(line.trim().startsWith('|') && cells.length > 0) cells.shift();
         if(line.trim().endsWith('|') && cells.length > 0) cells.pop();
 

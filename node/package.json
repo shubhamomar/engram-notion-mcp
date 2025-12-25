@@ -1,23 +1,27 @@
 {
   "name": "engram-notion-mcp",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Bun implementation of the Engram Notion MCP server",
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
     "start": "bun run src/index.ts",
+    "build": "bun build ./src/index.ts --outfile ./dist/index.js --target node --external better-sqlite3",
+    "prepublishOnly": "bun run build",
     "version": "bun run ../scripts/sync-version.js && git add ../python/pyproject.toml"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.1",
     "@notionhq/client": "^2.2.14",
+    "better-sqlite3": "^11.5.0",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
     "bun-types": "^1.1.0",
     "typescript": "^5.0.0"
   },
   "bin": {
-    "engram-notion-mcp": "src/index.ts"
+    "engram-notion-mcp": "./dist/index.js"
   }
 }
