@@ -47,32 +47,39 @@ To use Engram Notion MCP, you need to set up your environment variables.
 | `TELEGRAM_CHAT_ID` | No | For `send_alert` tool. |
 | `AGENT_MEMORY_PATH` | No | Custom path for the SQLite memory database. |
 
-### 💡 Quick Setup Tips
+---
 
-<details>
-<summary><strong>🔑 How to get Notion API Key</strong></summary>
+> ### 💡 Quick Setup Tips
+> <details>
+> <summary>
+> <h4 style="display: inline-block; margin: 0;">🔑 How to get Notion API Key</h4>
+> </summary>
+>
+> 1.  Go to [Notion My Integrations](https://www.notion.so/my-integrations).
+> 2.  Click **New integration**.
+> 3.  Name it (e.g., "Engram Notion MCP") and submit.
+> 4.  Copy the **Internal Integration Secret**. this is your `NOTION_API_KEY`.
+> </details>
+>
+> <details>
+> <summary>
+> <h4 style="display: inline-block; margin: 0; margin-bottom: 1rem;">🤖 How to get Telegram Bot Token & Chat ID</h4>
+> </summary>
+>
+> 1.  **Bot Token**:
+>     - Open Telegram and search for **@BotFather**.
+>     - Send the command `/newbot`.
+>     - Follow the prompts to name your bot.
+>     - Copy the **HTTP API Token**.
+> <br/>
+> 2.  **Chat ID**:
+>     - Search for **@userinfobot** in Telegram.
+>     - Click Start or send `/start`.
+>     - It will reply with your **Id**. Copy this number.
+> </details>
+>
 
-1.  Go to [Notion My Integrations](https://www.notion.so/my-integrations).
-2.  Click **New integration**.
-3.  Name it (e.g., "Engram Notion MCP") and submit.
-4.  Copy the **Internal Integration Secret**. this is your `NOTION_API_KEY`.
-</details>
-
-<details>
-<summary><strong>🤖 How to get Telegram Bot Token & Chat ID</strong></summary>
-
-1.  **Bot Token**:
-    - Open Telegram and search for **@BotFather**.
-    - Send the command `/newbot`.
-    - Follow the prompts to name your bot.
-    - Copy the **HTTP API Token**.
-
-2.  **Chat ID**:
-    - Search for **@userinfobot** in Telegram.
-    - Click Start or send `/start`.
-    - It will reply with your **Id**. Copy this number.
-</details>
-
+---
 
 ### Configuration Patterns
 
@@ -96,15 +103,136 @@ To give the agent access to multiple specific pages:
 
 ---
 
-## Installation & Usage Guide
+## 🔌 Installation & Client Setup Instructions
 
-This repository contains the implementation instructions for both:
+<details open>
+<summary>
+<h3 style="display: inline-block;"> ⚡ Recommended (Fastest) - Bun</h3>
+</summary>
 
-- **[Bun](./node/README.md#client-setup-instructions-bun)** (Recommended)
-- **[Python](./python/README.md#client-setup-instructions-python)**
+Use `bunx` to run the server with native performance (`bun:sqlite`).
 
-Please see the respective directories for installation and usage instructions.
+Add this to your `claude_desktop_config.json` or `mcp.json`.
+
+**Config using `bunx` (Recommended):**
+```json
+{
+  "mcpServers": {
+    "engram-notion-mcp": {
+      "command": "bunx",
+      "args": ["engram-notion-mcp"],
+      "env": {
+        "NOTION_API_KEY": "secret_your_key_here"
+      }
+    }
+  }
+}
+```
+</details>
+
+---
+
+<details>
+<summary>
+<h3 style="display: inline-block;"> 🐢 Standard - Node.js (NPX)</h3>
+</summary>
+
+Works with any standard Node.js environment (`better-sqlite3`).
+
+Add this to your `claude_desktop_config.json` or `mcp.json`.
+
+**Config using `npx` (Standard):**
+```json
+{
+  "mcpServers": {
+    "engram-notion-mcp": {
+      "command": "npx",
+      "args": ["-y", "engram-notion-mcp"],
+      "env": {
+        "NOTION_API_KEY": "secret_your_key_here"
+      }
+    }
+  }
+}
+```
+</details>
+
+---
+
+<details>
+<summary>
+<h3 style="display: inline-block;"> 🐍 Alternative - Python (UVX / PIPX)</h3>
+</summary>
+
+If you prefer `uvx` or `pipx` or have strict Python environments:
+
+Add this to your `claude_desktop_config.json` or `mcp.json`.
+
+**Config using `uvx` (Alternative):**
+```json
+{
+  "mcpServers": {
+    "engram-notion-mcp": {
+      "command": "uvx",
+      "args": ["engram-notion-mcp"],
+      "env": {
+        "NOTION_API_KEY": "secret_your_key_here"
+      }
+    }
+  }
+}
+```
+
+---
+
+**Config using `pipx` (Alternative):**
+
+```json
+{
+  "mcpServers": {
+    "engram-notion-mcp": {
+      "command": "pipx",
+      "args": ["run", "engram-notion-mcp"],
+      "env": { ... }
+    }
+  }
+}
+```
+</details>
+
+---
+
+**Where to put it:**
+- **🖥️ Desktop Apps (Claude Desktop): `claude_desktop_config.json`**
+- **🆚 VS Code / Cursor / Windsurf**: User Settings (`settings.json`).
+- **Cline / Roo Code**: Extension Settings -> MCP Servers.
+- **Kilo Code**: `.kilo/config.json`.
+- **⌨️ Gemini CLI:**
+    <details>
+    <summary>
+    <h4 style="display: inline-block; margin: 0;">Bun (Recommended)</h4>
+    </summary>
+
+    ```bash
+    gemini mcp add engram-notion-mcp bunx "engram-notion-mcp" -e NOTION_API_KEY=<your_secret_key>
+    ```
+    </details>
+
+    <details>
+    <summary>
+    <h4 style="display: inline-block; margin: 0;">Node.js - NPX (Standard)</h4>
+    </summary>
+
+    ```bash
+    gemini mcp add engram node "npx engram-notion-mcp" -e NOTION_API_KEY=<your_secret_key>
+    ```
+    </details>
+
+---
 
 ## Quick Links
-- [Bun Package on NPM](https://www.npmjs.com/package/engram-notion-mcp)
+
+This MCP tool is published as a package on NPM and PyPI.
+
+- [Bun / Node.js Package on NPM](https://www.npmjs.com/package/engram-notion-mcp)
 - [Python Package on PyPI](https://pypi.org/project/engram-notion-mcp/)

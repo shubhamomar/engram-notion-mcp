@@ -44,6 +44,7 @@ jobs:
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
+          cp ../README.md README.md
           uv build
           uv publish
 
@@ -71,5 +72,6 @@ jobs:
         if: steps.check.outputs.src == 'true' || github.event_name == 'workflow_dispatch'
         working-directory: ./node
         run: |
+          cp ../README.md README.md
           bun install
           npm publish --provenance --access public
