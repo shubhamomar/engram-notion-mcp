@@ -346,7 +346,7 @@ const tools: Record<string, (args: ToolArgs) => Promise<string | string[]>> = {
 const server = new Server(
   {
     name: "engram-notion-mcp",
-    version: "0.1.1",
+    version: "0.2.0-rc.1",
   },
   {
     capabilities: {
