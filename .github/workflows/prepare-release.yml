@@ -39,6 +39,11 @@ jobs:
         with:
           bun-version: "1.3.5"
 
+      - name: Configure Git User
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "19784671+shubhamomar@users.noreply.github.com"
+
       - name: Create .npmrc config
         working-directory: ./node
         run: |
