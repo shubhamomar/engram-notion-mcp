@@ -55,4 +55,4 @@ jobs:
         run: bun run release
 
       - name: Push Changes
-        run: bun run git-push
+        run: git push --follow-tags

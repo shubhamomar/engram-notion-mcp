@@ -29,8 +29,7 @@
     "remove-dependencies": "rm -rf ./node_modules",
     "postremove-dependencies": "bun install",
     "release": "bun run scripts/release.ts",
-    "prepublishOnly": "bun run build",
-    "git-push": "git push --follow-tags"
+    "prepublishOnly": "bun run build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.1",
