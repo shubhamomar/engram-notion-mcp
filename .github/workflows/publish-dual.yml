@@ -21,7 +21,7 @@ jobs:
   # 1. Publish Python Version (PyPI)
   publish-pypi:
     runs-on: ubuntu-latest
-    if: inputs.target == 'python' || inputs.target == 'both' || github.event_name == 'push'
+    if: inputs.target == 'python' || inputs.target == 'both'
     steps:
       - uses: actions/checkout@v4
       - name: Check for Python changes
@@ -34,7 +34,10 @@ jobs:
 
       - name: Install uv
         if: steps.check.outputs.src == 'true' || github.event_name == 'workflow_dispatch'
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: 0.9.16
+          enable-cache: true
 
       - name: Build and Publish
         if: steps.check.outputs.src == 'true' || github.event_name == 'workflow_dispatch'
