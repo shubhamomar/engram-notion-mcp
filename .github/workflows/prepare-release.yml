@@ -33,6 +33,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         name: Checkout repo
+        with:
+          token: ${{ secrets.AUTO_PUSH }} # Requires a PAT to push changes/tags back to protected branches
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v1
