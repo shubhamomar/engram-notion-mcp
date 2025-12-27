@@ -70,7 +70,12 @@ jobs:
         working-directory: ./node
         run: |
           cp ../README.md README.md
-          npm publish --provenance --access public
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ $VERSION == *"-"* ]]; then
+            npm publish --provenance --access public --tag next
+          else
+            npm publish --provenance --access public
+          fi
         env:
           # strictly required for the auth to work with the setup-node config
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
