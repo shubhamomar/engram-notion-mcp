@@ -28,8 +28,7 @@
     "preremove-dependencies": "rm -f ./bun.lock ./package-lock.json",
     "remove-dependencies": "rm -rf ./node_modules",
     "postremove-dependencies": "bun install",
-    "release": "bun run scripts/release.ts",
-    "prepublishOnly": "bun run build"
+    "release": "bun run scripts/release.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.1",
