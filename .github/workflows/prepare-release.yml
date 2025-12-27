@@ -4,14 +4,26 @@ on:
   workflow_dispatch:
     inputs:
       version_type:
-        description: 'Version bump type (major | minor | patch)'
+        description: 'Version bump type (major | minor | patch | premajor | preminor | prepatch | prerelease)'
         required: true
-        default: 'patch'
+        default: 'prerelease'
         type: choice
         options:
+        - prerelease
+        - prepatch
+        - preminor
+        - premajor
         - patch
-        - minor
-        - major
+      pre_id:
+        description: 'Pre-release identifier (only used for pre* version types)'
+        required: false
+        default: 'rc'
+        type: choice
+        options:
+        - rc
+        - alpha
+        - beta
+        - experimental
 
 jobs:
   release:
@@ -32,13 +44,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+      - name: Create .npmrc config
+        working-directory: ./node
+        run: |
+          echo "release=${{ inputs.version_type }}" > .npmrc
+          echo "preid=${{ inputs.pre_id }}" >> .npmrc
+
       - name: Bump Version & Sync
         working-directory: ./node
         run: |
-          # This runs bun pm version, which triggers the 'version' script in package.json
-          # The 'version' script runs sync-version.js and git adds the python file.
-          # We use a custom message format requested by the user.
-          bun pm version ${{ inputs.version_type }} -m "[skip ci] [npm-auto-versioning] new released version v%s"
+          # Uses the 'release' script in package.json which respects .npmrc or env vars.
+          # The script: npm version ... -m ...
+          bun run release
 
       - name: Push Changes
-        run: git push origin HEAD:master --tags
+        run: bun run git-push

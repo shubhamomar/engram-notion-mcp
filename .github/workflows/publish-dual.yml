@@ -1,8 +1,6 @@
 name: Publish Engram (Dual Stack)
 
 on:
-  push:
-    branches: [ master ]
   workflow_dispatch:
     inputs:
       target:
@@ -51,7 +49,7 @@ jobs:
   # 2. Publish Bun Version (NPM)
   publish-npm:
     runs-on: ubuntu-latest
-    if: inputs.target == 'node' || inputs.target == 'both' || github.event_name == 'push'
+    if: inputs.target == 'node' || inputs.target == 'both'
     steps:
       - uses: actions/checkout@v4
       - name: Check for Node changes

@@ -30,6 +30,7 @@ MANIFEST
 /bazel-out
 /target
 */node_modules
+/node_modules
 /typings
 package-lock.json
 bun.lock
