@@ -8,7 +8,7 @@
 - [x] Task: Conductor - User Manual Verification 'Node.js Large Content' (Protocol in workflow.md) 68821f6
 
 ## Phase 2: Python Implementation
-- [~] Task: Create a reproduction test case in `python/src/engram_notion_mcp/test_server.py` with >2000 char content
-- [ ] Task: Implement content chunking logic in `python/src/engram_notion_mcp/server.py`
-- [ ] Task: Verify fix with the reproduction test case
-- [ ] Task: Conductor - User Manual Verification 'Python Large Content' (Protocol in workflow.md)
+- [x] Task: Create a reproduction test case in `python/src/engram_notion_mcp/test_server.py` with >2000 char content
+- [x] Task: Implement content chunking logic in `python/src/engram_notion_mcp/server.py`
+- [x] Task: Verify fix with the reproduction test case
+- [~] Task: Conductor - User Manual Verification 'Python Large Content' (Protocol in workflow.md)

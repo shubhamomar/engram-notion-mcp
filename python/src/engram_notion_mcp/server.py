@@ -97,6 +97,39 @@ def tool_remember_fact(fact: str) -> str:
     """Stores a fact in the agent's internal SQLite memory."""
     return remember_fact(fact)
 
+def chunk_text(text: str, max_length: int = 1800) -> list[str]:
+    """
+    Splits text into chunks of at most max_length characters.
+    Tries to split at newlines or periods to maintain readability.
+    """
+    if len(text) <= max_length:
+        return [text]
+
+    chunks = []
+    while text:
+        if len(text) <= max_length:
+            chunks.append(text)
+            break
+
+        # Find a suitable split point
+        # Look for the last newline within the limit
+        split_index = text.rfind('\n', 0, max_length)
+        
+        if split_index == -1:
+            # If no newline, look for the last period
+            split_index = text.rfind('. ', 0, max_length)
+            if split_index != -1:
+                split_index += 1 # Include the period
+
+        if split_index == -1:
+            # If no good split point, hard split
+            split_index = max_length
+
+        chunks.append(text[:split_index])
+        text = text[split_index:].lstrip() # Remove leading whitespace from next chunk
+    
+    return chunks
+
 def create_page(title: str, content: str = "", parent_id: str = None) -> str:
     """
     Creates a new sub-page in Notion.
@@ -114,13 +147,15 @@ def create_page(title: str, content: str = "", parent_id: str = None) -> str:
         # Construct children if content is provided
         children = []
         if content:
-            children.append({
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": content}}]
-                }
-            })
+            chunks = chunk_text(content)
+            for chunk in chunks:
+                children.append({
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                    }
+                })
 
         response = notion.pages.create(
             parent={"page_id": target_parent},
@@ -198,14 +233,16 @@ def update_page(page_id: str, title: str, content: str, type: str = "paragraph",
         cleaned_content = re.sub(r"^```(?:[\w\+\-]+)?\n?", "", content.strip())
         cleaned_content = re.sub(r"\n?```$", "", cleaned_content)
 
-        children.append({
-            "object": "block",
-            "type": "code",
-            "code": {
-                "rich_text": [{"type": "text", "text": {"content": cleaned_content}}],
-                "language": language
-            }
-        })
+        chunks = chunk_text(cleaned_content)
+        for chunk in chunks:
+            children.append({
+                "object": "block",
+                "type": "code",
+                "code": {
+                    "rich_text": [{"type": "text", "text": {"content": chunk}}],
+                    "language": language
+                }
+            })
     elif type == "table":
         # Parse markdown table
         rows = []
@@ -257,13 +294,15 @@ def update_page(page_id: str, title: str, content: str, type: str = "paragraph",
             }
         })
     else:
-        children.append({
-            "object": "block",
-            "type": type,
-            type: {
-                "rich_text": [{"type": "text", "text": {"content": content}}]
-            }
-        })
+        chunks = chunk_text(content)
+        for chunk in chunks:
+            children.append({
+                "object": "block",
+                "type": type,
+                type: {
+                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                }
+            })
 
     try:
         notion.blocks.children.append(block_id=page_id, children=children)
