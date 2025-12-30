@@ -1,5 +1,5 @@
 import { expect, test, describe, spyOn } from "bun:test";
-import { tools, notion } from "./index.ts";
+import { tools, notion, dbAdapter } from "./index.ts";
 
 describe("Notion Tools", () => {
   test("read_page_content tool should be defined", () => {
@@ -84,5 +84,35 @@ describe("Notion Tools", () => {
     expect(result).toContain("block-to-delete");
 
     deleteSpy.mockRestore();
+  });
+
+  test("search_memory should return matching results", async () => {
+    const querySpy = spyOn(dbAdapter, "query").mockImplementation(() => ({
+      run: () => {},
+      all: () => [
+        { content: "Ashwatthama story", metadata: JSON.stringify({ timestamp: "2025-12-30" }) }
+      ]
+    }));
+
+    const result = await tools.search_memory({ query: "Ashwatthama" });
+    expect(result).toContain("Ashwatthama story");
+    expect(result).toContain("[2025-12-30]");
+
+    querySpy.mockRestore();
+  });
+
+  test("get_recent_memories should return recent results", async () => {
+    const querySpy = spyOn(dbAdapter, "query").mockImplementation(() => ({
+      run: () => {},
+      all: () => [
+        { content: "Recent fact", metadata: JSON.stringify({ type: "manual_fact" }) }
+      ]
+    }));
+
+    const result = await tools.get_recent_memories({ limit: 1 });
+    expect(result).toContain("Recent fact");
+    expect(result).toContain("[MANUAL_FACT]");
+
+    querySpy.mockRestore();
   });
 });

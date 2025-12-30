@@ -55,8 +55,10 @@ try {
 
 // Database Interface
 interface DBAdapter {
-  query(sql: string): any; // Abstracted query preparation relative to implementation
-  run(params: any): void;  // Execution abstraction
+  query(sql: string): {
+    run(params: any): void;
+    all(params: any): any[];
+  };
 }
 
 const get_db_adapter = (dbPath: string): DBAdapter => {
@@ -80,10 +82,10 @@ const get_db_adapter = (dbPath: string): DBAdapter => {
       query: (sql: string) => {
         const stmt = db.query(sql);
         return {
-          run: (params: any) => stmt.run(params)
+          run: (params: any) => stmt.run(params),
+          all: (params: any) => stmt.all(params)
         };
-      },
-      run: () => {} // Not needed for Bun's prepared stmt flow
+      }
     };
   } else {
     // runtime: Node.js (via better-sqlite3)
@@ -105,15 +107,15 @@ const get_db_adapter = (dbPath: string): DBAdapter => {
       query: (sql: string) => {
         const stmt = db.prepare(sql);
         return {
-          run: (params: any) => stmt.run(params)
+          run: (params: any) => stmt.run(params),
+          all: (params: any) => stmt.all(params)
         }
-      },
-      run: () => {}
+      }
     };
   }
 };
 
-const dbAdapter = get_db_adapter(DB_PATH);
+export const dbAdapter = get_db_adapter(DB_PATH);
 
 const _save_to_db = (content: string, metadata: any = null) => {
   try {
@@ -134,6 +136,67 @@ export const tools: Record<string, (args: ToolArgs) => Promise<string | string[]
   remember_fact: async ({ fact }) => {
     _save_to_db(fact, { type: "manual_fact", timestamp: new Date().toISOString() });
     return `Remembered: ${fact}`;
+  },
+
+  search_memory: async ({ query }) => {
+    try {
+      const safe_query = query.replace(/[^a-zA-Z0-9\s]/g, "");
+      const stmt = dbAdapter.query(`
+        SELECT content, metadata FROM memory_index 
+        WHERE memory_index MATCH $query 
+        ORDER BY rank 
+        LIMIT 10
+      `);
+      
+      const results = stmt.all({ $query: safe_query });
+
+      if(!results || results.length === 0) return "No matching memories found.";
+
+      const formatted = results.map((r: any) => {
+        let content = r.content;
+        try {
+          const meta = JSON.parse(r.metadata);
+          const timestamp = meta.timestamp || "";
+          const prefix = timestamp ? `[${timestamp}] ` : "";
+          return `- ${prefix}${content}`;
+        } catch(e) {
+          return `- ${content}`;
+        }
+      });
+
+      return formatted.join("\n");
+    } catch(e: any) {
+      return `Error searching memory: ${e.message}`;
+    }
+  },
+
+  get_recent_memories: async ({ limit = 5 }) => {
+    try {
+      const stmt = dbAdapter.query(`
+        SELECT content, metadata FROM memory_index 
+        ORDER BY rowid DESC 
+        LIMIT $limit
+      `);
+      
+      const results = stmt.all({ $limit: limit });
+
+      if(!results || results.length === 0) return "No memories found.";
+
+      const formatted = results.map((r: any) => {
+        let content = r.content;
+        try {
+          const meta = JSON.parse(r.metadata);
+          const kind = (meta.type || "memory").toUpperCase();
+          return `- [${kind}] ${content}`;
+        } catch(e) {
+          return `- ${content}`;
+        }
+      });
+
+      return formatted.join("\n");
+    } catch(e: any) {
+      return `Error retrieving recent memories: ${e.message}`;
+    }
   },
 
   create_page: async ({ title, content = "", parent_id }) => {
@@ -461,6 +524,27 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             fact: { type: "string" },
           },
           required: ["fact"],
+        },
+      },
+      {
+        name: "search_memory",
+        description: "Searches the agent's internal memory using Semantic-like Keyword Search (FTS).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: "The search term to look for. Supports partial matches." },
+          },
+          required: ["query"],
+        },
+      },
+      {
+        name: "get_recent_memories",
+        description: "Retrieves the most recent memories.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            limit: { type: "number", default: 5 },
+          },
         },
       },
       {
