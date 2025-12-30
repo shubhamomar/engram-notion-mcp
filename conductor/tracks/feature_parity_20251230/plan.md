@@ -18,7 +18,7 @@
 - [x] Task: Conductor - User Manual Verification 'Node.js Testing Suite' (Protocol in workflow.md) 15eb2ed
 
 ## Phase 4: Python Testing Suite
-- [~] Task: Configure `pytest` and `pytest-cov` in the Python environment
-- [ ] Task: Implement unit tests for all Notion tools in Python (mocked)
-- [ ] Task: Implement unit tests for Memory tools in Python
-- [ ] Task: Conductor - User Manual Verification 'Python Testing Suite' (Protocol in workflow.md)
+- [x] Task: Configure `pytest` and `pytest-cov` in the Python environment cb730c1
+- [x] Task: Implement unit tests for all Notion tools in Python (mocked) cb730c1
+- [x] Task: Implement unit tests for Memory tools in Python cb730c1
+- [x] Task: Conductor - User Manual Verification 'Python Testing Suite' (Protocol in workflow.md) cb730c1
