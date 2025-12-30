@@ -1,5 +1,7 @@
-import { expect, test, describe, spyOn } from "bun:test";
+import { expect, test, describe, spyOn, mock } from "bun:test";
 import { tools, notion, dbAdapter } from "./index.ts";
+
+process.env.NOTION_PAGE_ID = "test-page-id";
 
 describe("Notion Tools", () => {
   test("read_page_content tool should be defined", () => {
@@ -112,6 +114,90 @@ describe("Notion Tools", () => {
     const result = await tools.get_recent_memories({ limit: 1 });
     expect(result).toContain("Recent fact");
     expect(result).toContain("[MANUAL_FACT]");
+
+    querySpy.mockRestore();
+  });
+
+  test("create_page should create a page", async () => {
+    const createSpy = spyOn(notion.pages, "create").mockImplementation(() => 
+      Promise.resolve({ url: "https://notion.so/test-page" } as any)
+    );
+
+    const result = await tools.create_page({ title: "New Page", content: "Test content" });
+    expect(result).toContain("Successfully created page");
+    expect(result).toContain("https://notion.so/test-page");
+
+    createSpy.mockRestore();
+  });
+
+  test("update_page should append blocks", async () => {
+    const appendSpy = spyOn(notion.blocks.children, "append").mockImplementation(() => 
+      Promise.resolve({} as any)
+    );
+
+    const result = await tools.update_page({ 
+      page_id: "test-id", 
+      title: "Section", 
+      content: "Hello",
+      type: "paragraph" 
+    });
+    expect(result).toContain("Successfully updated page");
+
+    appendSpy.mockRestore();
+  });
+
+  test("log_to_notion should call update_page", async () => {
+    // This is essentially update_page wrapper
+    const appendSpy = spyOn(notion.blocks.children, "append").mockImplementation(() => 
+      Promise.resolve({} as any)
+    );
+
+    const result = await tools.log_to_notion({ title: "Log", content: "Data", page_id: "page-id" });
+    expect(result).toContain("Successfully updated page");
+
+    appendSpy.mockRestore();
+  });
+
+  test("list_sub_pages should list child pages", async () => {
+    const listSpy = spyOn(notion.blocks.children, "list").mockImplementation(() => 
+      Promise.resolve({
+        results: [
+          { type: "child_page", id: "sub-id", child_page: { title: "Sub Page" } }
+        ]
+      } as any)
+    );
+
+    const result = await tools.list_sub_pages({ parent_id: "parent-id" });
+    expect(result).toContain("Sub Page");
+    expect(result).toContain("sub-id");
+
+    listSpy.mockRestore();
+  });
+
+  test("send_alert should send a telegram message", async () => {
+    // Mock global fetch for Telegram
+    const originalFetch = global.fetch;
+    global.fetch = mock(() => Promise.resolve({ ok: true } as any));
+
+    process.env.TELEGRAM_BOT_TOKEN = "token";
+    process.env.TELEGRAM_CHAT_ID = "123";
+
+    const result = await tools.send_alert({ message: "Alert!" });
+    expect(result).toBe("Alert sent successfully.");
+
+    global.fetch = originalFetch;
+  });
+});
+
+describe("Memory Tools", () => {
+  test("remember_fact should store a fact", async () => {
+    const querySpy = spyOn(dbAdapter, "query").mockImplementation(() => ({
+      run: () => {},
+      all: () => []
+    }));
+
+    const result = await tools.remember_fact({ fact: "The sky is blue" });
+    expect(result).toBe("Remembered: The sky is blue");
 
     querySpy.mockRestore();
   });
