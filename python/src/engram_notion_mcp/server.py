@@ -87,13 +87,49 @@ def _save_to_db(content: str, metadata: dict = None):
     except Exception as e:
         print(f"Error saving to DB: {e}")
 
-@mcp.tool()
 def remember_fact(fact: str) -> str:
     """Stores a fact in the agent's internal SQLite memory."""
     _save_to_db(fact, {"type": "manual_fact", "timestamp": datetime.now().isoformat()})
     return f"Remembered: {fact}"
 
-@mcp.tool()
+@mcp.tool(name="remember_fact")
+def tool_remember_fact(fact: str) -> str:
+    """Stores a fact in the agent's internal SQLite memory."""
+    return remember_fact(fact)
+
+def chunk_text(text: str, max_length: int = 1800) -> list[str]:
+    """
+    Splits text into chunks of at most max_length characters.
+    Tries to split at newlines or periods to maintain readability.
+    """
+    if len(text) <= max_length:
+        return [text]
+
+    chunks = []
+    while text:
+        if len(text) <= max_length:
+            chunks.append(text)
+            break
+
+        # Find a suitable split point
+        # Look for the last newline within the limit
+        split_index = text.rfind('\n', 0, max_length)
+
+        if split_index == -1:
+            # If no newline, look for the last period
+            split_index = text.rfind('. ', 0, max_length)
+            if split_index != -1:
+                split_index += 1 # Include the period
+
+        if split_index == -1:
+            # If no good split point, hard split
+            split_index = max_length
+
+        chunks.append(text[:split_index])
+        text = text[split_index:].lstrip() # Remove leading whitespace from next chunk
+
+    return chunks
+
 def create_page(title: str, content: str = "", parent_id: str = None) -> str:
     """
     Creates a new sub-page in Notion.
@@ -111,13 +147,15 @@ def create_page(title: str, content: str = "", parent_id: str = None) -> str:
         # Construct children if content is provided
         children = []
         if content:
-            children.append({
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": content}}]
-                }
-            })
+            chunks = chunk_text(content)
+            for chunk in chunks:
+                children.append({
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                    }
+                })
 
         response = notion.pages.create(
             parent={"page_id": target_parent},
@@ -149,7 +187,11 @@ def create_page(title: str, content: str = "", parent_id: str = None) -> str:
     except Exception as e:
         return f"Error creating page: {str(e)}"
 
-@mcp.tool()
+@mcp.tool(name="create_page")
+def tool_create_page(title: str, content: str = "", parent_id: str = None) -> str:
+    """Creates a new sub-page in Notion."""
+    return create_page(title, content, parent_id)
+
 def update_page(page_id: str, title: str, content: str, type: str = "paragraph", language: str = "plain text") -> str:
     """
     Appends content to a specific Notion page.
@@ -191,14 +233,16 @@ def update_page(page_id: str, title: str, content: str, type: str = "paragraph",
         cleaned_content = re.sub(r"^```(?:[\w\+\-]+)?\n?", "", content.strip())
         cleaned_content = re.sub(r"\n?```$", "", cleaned_content)
 
-        children.append({
-            "object": "block",
-            "type": "code",
-            "code": {
-                "rich_text": [{"type": "text", "text": {"content": cleaned_content}}],
-                "language": language
-            }
-        })
+        chunks = chunk_text(cleaned_content)
+        for chunk in chunks:
+            children.append({
+                "object": "block",
+                "type": "code",
+                "code": {
+                    "rich_text": [{"type": "text", "text": {"content": chunk}}],
+                    "language": language
+                }
+            })
     elif type == "table":
         # Parse markdown table
         rows = []
@@ -206,7 +250,7 @@ def update_page(page_id: str, title: str, content: str, type: str = "paragraph",
         has_header = False
 
         for i, line in enumerate(lines):
-            # Skip separator lines (e.g., |---|---|)
+            # Skip separator lines (e.g., |---|---|
             if re.match(r'^\s*\|?[\s\-:|]+\|?\s*$', line):
                 if i == 1: has_header = True
                 continue
@@ -250,13 +294,15 @@ def update_page(page_id: str, title: str, content: str, type: str = "paragraph",
             }
         })
     else:
-        children.append({
-            "object": "block",
-            "type": type,
-            type: {
-                "rich_text": [{"type": "text", "text": {"content": content}}]
-            }
-        })
+        chunks = chunk_text(content)
+        for chunk in chunks:
+            children.append({
+                "object": "block",
+                "type": type,
+                type: {
+                    "rich_text": [{"type": "text", "text": {"content": chunk}}]
+                }
+            })
 
     try:
         notion.blocks.children.append(block_id=page_id, children=children)
@@ -264,7 +310,11 @@ def update_page(page_id: str, title: str, content: str, type: str = "paragraph",
     except Exception as e:
         return f"Error updating page: {str(e)}"
 
-@mcp.tool()
+@mcp.tool(name="update_page")
+def tool_update_page(page_id: str, title: str, content: str, type: str = "paragraph", language: str = "plain text") -> str:
+    """Appends content to a specific Notion page."""
+    return update_page(page_id, title, content, type, language)
+
 def log_to_notion(title: str, content: str, type: str = "paragraph", language: str = "plain text", page_id: str = None) -> str:
     """
     Logs an entry to a Notion page.
@@ -282,7 +332,11 @@ def log_to_notion(title: str, content: str, type: str = "paragraph", language: s
 
     return update_page(target_page, title, content, type, language)
 
-@mcp.tool()
+@mcp.tool(name="log_to_notion")
+def tool_log_to_notion(title: str, content: str, type: str = "paragraph", language: str = "plain text", page_id: str = None) -> str:
+    """Logs an entry to a Notion page."""
+    return log_to_notion(title, content, type, language, page_id)
+
 def list_sub_pages(parent_id: str = None) -> str:
     """
     Lists sub-pages under a parent page.
@@ -309,7 +363,11 @@ def list_sub_pages(parent_id: str = None) -> str:
     except Exception as e:
         return f"Error listing sub-pages: {str(e)}"
 
-@mcp.tool()
+@mcp.tool(name="list_sub_pages")
+def tool_list_sub_pages(parent_id: str = None) -> str:
+    """Lists sub-pages under a parent page."""
+    return list_sub_pages(parent_id)
+
 def read_page_content(page_id: str) -> str:
     """
     Reads the content of a Notion page.
@@ -341,7 +399,11 @@ def read_page_content(page_id: str) -> str:
     except Exception as e:
         return f"Error reading page: {str(e)}"
 
-@mcp.tool()
+@mcp.tool(name="read_page_content")
+def tool_read_page_content(page_id: str) -> str:
+    """Reads the content of a Notion page."""
+    return read_page_content(page_id)
+
 def send_alert(message: str) -> str:
     """Sends a push notification via Telegram."""
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -358,7 +420,11 @@ def send_alert(message: str) -> str:
     except Exception as e:
         return f"Failed to send alert: {str(e)}"
 
-@mcp.tool()
+@mcp.tool(name="send_alert")
+def tool_send_alert(message: str) -> str:
+    """Sends a push notification via Telegram."""
+    return send_alert(message)
+
 def search_memory(query: str) -> str:
     """
     Searches the agent's internal memory using Semantic-like Keyword Search (FTS).
@@ -374,14 +440,27 @@ def search_memory(query: str) -> str:
         # We sanitize query to avoid syntax errors with FTS operators if user types weird chars
         safe_query = re.sub(r'[^a-zA-Z0-9\s]', '', query)
 
-        c.execute("""
-            SELECT content, metadata FROM memory_index
-            WHERE memory_index MATCH ?
-            ORDER BY rank
-            LIMIT 10
-        """, (safe_query,))
+        try:
+            c.execute("""
+                SELECT content, metadata FROM memory_index
+                WHERE memory_index MATCH ?
+                ORDER BY rank
+                LIMIT 10
+            """, (safe_query,))
+            results = c.fetchall()
+        except sqlite3.OperationalError as e:
+            # Fallback to LIKE if MATCH fails (e.g. FTS5 not available)
+            if "no such column" in str(e) or "syntax error" in str(e):
+                c.execute("""
+                    SELECT content, metadata FROM memory_index
+                    WHERE content LIKE ?
+                    ORDER BY rowid DESC
+                    LIMIT 10
+                """, (f"%{safe_query}%",))
+                results = c.fetchall()
+            else:
+                raise e
 
-        results = c.fetchall()
         conn.close()
 
         if not results:
@@ -402,7 +481,11 @@ def search_memory(query: str) -> str:
     except Exception as e:
         return f"Error searching memory: {str(e)}"
 
-@mcp.tool()
+@mcp.tool(name="search_memory")
+def tool_search_memory(query: str) -> str:
+    """Searches the agent's internal memory."""
+    return search_memory(query)
+
 def get_recent_memories(limit: int = 5) -> str:
     """
     Retrieves the most recent memories.
@@ -433,16 +516,11 @@ def get_recent_memories(limit: int = 5) -> str:
     except Exception as e:
         return f"Error retrieving recent memories: {str(e)}"
 
-    file_path = DB_PATH / "files" / filename
-    try:
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(file_path, "wb") as f:
-            f.write(content)
-        return str(file_path)
-    except Exception as e:
-        return f"Error saving file: {str(e)}"
+@mcp.tool(name="get_recent_memories")
+def tool_get_recent_memories(limit: int = 5) -> str:
+    """Retrieves the most recent memories."""
+    return get_recent_memories(limit)
 
-@mcp.tool()
 def list_databases() -> str:
     """
     Lists all databases shared with the integration.
@@ -464,7 +542,11 @@ def list_databases() -> str:
     except Exception as e:
         return f"Error listing databases: {str(e)}"
 
-@mcp.tool()
+@mcp.tool(name="list_databases")
+def tool_list_databases() -> str:
+    """Lists all databases shared with the integration."""
+    return list_databases()
+
 def query_database(database_id: str, query_filter: str = None) -> str:
     """
     Queries a database and returns its items.
@@ -504,7 +586,11 @@ def query_database(database_id: str, query_filter: str = None) -> str:
     except Exception as e:
         return f"Error querying database: {str(e)}"
 
-@mcp.tool()
+@mcp.tool(name="query_database")
+def tool_query_database(database_id: str, query_filter: str = None) -> str:
+    """Queries a database and returns its items."""
+    return query_database(database_id, query_filter)
+
 def delete_block(block_id: str) -> str:
     """
     Deletes (archives) a block or page.
@@ -514,6 +600,11 @@ def delete_block(block_id: str) -> str:
         return f"Successfully deleted block {block_id}"
     except Exception as e:
         return f"Error deleting block: {str(e)}"
+
+@mcp.tool(name="delete_block")
+def tool_delete_block(block_id: str) -> str:
+    """Deletes (archives) a block or page."""
+    return delete_block(block_id)
 
 if __name__ == "__main__":
     # Check for port argument to run in SSE mode

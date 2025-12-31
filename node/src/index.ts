@@ -17,7 +17,7 @@ dotenv.config({ path: path.join(import.meta.dir, "../.env") });
 
 // Initialize Notion Client
 const notionApiKey = process.env.NOTION_API_KEY;
-const notion = new Client({ auth: notionApiKey });
+export const notion = new Client({ auth: notionApiKey });
 
 // Database Initialization
 const get_default_db_path = (): string => {
@@ -55,9 +55,22 @@ try {
 
 // Database Interface
 interface DBAdapter {
-  query(sql: string): any; // Abstracted query preparation relative to implementation
-  run(params: any): void;  // Execution abstraction
+  query(sql: string): {
+    run(params: any): void;
+    all(params: any): any[];
+  };
 }
+
+// Helper for chunking text
+const chunkString = (str: string, length: number): string[] => {
+  const chunks: string[] = [];
+  let index = 0;
+  while(index < str.length) {
+    chunks.push(str.slice(index, index + length));
+    index += length;
+  }
+  return chunks;
+};
 
 const get_db_adapter = (dbPath: string): DBAdapter => {
   const isBun = typeof Bun !== "undefined";
@@ -80,10 +93,10 @@ const get_db_adapter = (dbPath: string): DBAdapter => {
       query: (sql: string) => {
         const stmt = db.query(sql);
         return {
-          run: (params: any) => stmt.run(params)
+          run: (params: any) => stmt.run(params),
+          all: (params: any) => stmt.all(params)
         };
-      },
-      run: () => {} // Not needed for Bun's prepared stmt flow
+      }
     };
   } else {
     // runtime: Node.js (via better-sqlite3)
@@ -105,15 +118,15 @@ const get_db_adapter = (dbPath: string): DBAdapter => {
       query: (sql: string) => {
         const stmt = db.prepare(sql);
         return {
-          run: (params: any) => stmt.run(params)
+          run: (params: any) => stmt.run(params),
+          all: (params: any) => stmt.all(params)
         }
-      },
-      run: () => {}
+      }
     };
   }
 };
 
-const dbAdapter = get_db_adapter(DB_PATH);
+export const dbAdapter = get_db_adapter(DB_PATH);
 
 const _save_to_db = (content: string, metadata: any = null) => {
   try {
@@ -130,10 +143,100 @@ interface ToolArgs {
 }
 
 // Tools implementation
-const tools: Record<string, (args: ToolArgs) => Promise<string | string[]>> = {
+export const tools: Record<string, (args: ToolArgs) => Promise<string | string[]>> = {
   remember_fact: async ({ fact }) => {
     _save_to_db(fact, { type: "manual_fact", timestamp: new Date().toISOString() });
     return `Remembered: ${fact}`;
+  },
+
+  search_memory: async ({ query }) => {
+    const safe_query = query.replace(/[^a-zA-Z0-9\s]/g, "");
+    try {
+      // Try FTS5 Match first
+      const stmt = dbAdapter.query(`
+        SELECT content, metadata FROM memory_index
+        WHERE memory_index MATCH $query
+        ORDER BY rank
+        LIMIT 10
+      `);
+
+      const results = stmt.all({ $query: safe_query });
+
+      if(!results || results.length === 0) return "No matching memories found.";
+
+      const formatted = results.map((r: any) => {
+        let content = r.content;
+        try {
+          const meta = JSON.parse(r.metadata);
+          const timestamp = meta.timestamp || "";
+          const prefix = timestamp ? `[${timestamp}] ` : "";
+          return `- ${prefix}${content}`;
+        } catch(e) {
+          return `- ${content}`;
+        }
+      });
+
+      return formatted.join("\n");
+    } catch(e: any) {
+      // Fallback to LIKE if MATCH fails (e.g. FTS5 not available)
+      if(e.message && (e.message.includes("no such column") || e.message.includes("syntax error"))) {
+        try {
+          const stmt = dbAdapter.query(`
+              SELECT content, metadata FROM memory_index
+              WHERE content LIKE $query
+              ORDER BY rowid DESC
+              LIMIT 10
+            `);
+          const results = stmt.all({ $query: `%${safe_query}%` });
+          if(!results || results.length === 0) return "No matching memories found (fallback search).";
+
+          const formatted = results.map((r: any) => {
+            let content = r.content;
+            try {
+              const meta = JSON.parse(r.metadata);
+              const timestamp = meta.timestamp || "";
+              const prefix = timestamp ? `[${timestamp}] ` : "";
+              return `- ${prefix}${content}`;
+            } catch(e) {
+              return `- ${content}`;
+            }
+          });
+          return formatted.join("\n");
+        } catch(fallbackErr: any) {
+          return `Error searching memory (fallback failed): ${fallbackErr.message}`;
+        }
+      }
+      return `Error searching memory: ${e.message}`;
+    }
+  },
+
+  get_recent_memories: async ({ limit = 5 }) => {
+    try {
+      const stmt = dbAdapter.query(`
+        SELECT content, metadata FROM memory_index
+        ORDER BY rowid DESC
+        LIMIT $limit
+      `);
+
+      const results = stmt.all({ $limit: limit });
+
+      if(!results || results.length === 0) return "No memories found.";
+
+      const formatted = results.map((r: any) => {
+        let content = r.content;
+        try {
+          const meta = JSON.parse(r.metadata);
+          const kind = (meta.type || "memory").toUpperCase();
+          return `- [${kind}] ${content}`;
+        } catch(e) {
+          return `- ${content}`;
+        }
+      });
+
+      return formatted.join("\n");
+    } catch(e: any) {
+      return `Error retrieving recent memories: ${e.message}`;
+    }
   },
 
   create_page: async ({ title, content = "", parent_id }) => {
@@ -145,13 +248,16 @@ const tools: Record<string, (args: ToolArgs) => Promise<string | string[]>> = {
     try {
       const children: any[] = [];
       if(content) {
-        children.push({
-          object: "block",
-          type: "paragraph",
-          paragraph: {
-            rich_text: [{ type: "text", text: { content: content } }]
-          }
-        });
+        const chunks = chunkString(content, 1800); // Notion limit is 2000
+        for(const chunk of chunks) {
+          children.push({
+            object: "block",
+            type: "paragraph",
+            paragraph: {
+              rich_text: [{ type: "text", text: { content: chunk } }]
+            }
+          });
+        }
       }
 
       const response: any = await notion.pages.create({
@@ -213,14 +319,17 @@ const tools: Record<string, (args: ToolArgs) => Promise<string | string[]>> = {
 
     if(type === "code") {
       let cleaned_content = content.trim().replace(/^```(?:[\w\+\-]+)?\n?/, "").replace(/\n?```$/, "");
-      children.push({
-        object: "block",
-        type: "code",
-        code: {
-          rich_text: [{ type: "text", text: { content: cleaned_content } }],
-          language: language
-        }
-      });
+      const chunks = chunkString(cleaned_content, 1800);
+      for(const chunk of chunks) {
+        children.push({
+          object: "block",
+          type: "code",
+          code: {
+            rich_text: [{ type: "text", text: { content: chunk } }],
+            language: language
+          }
+        });
+      }
     } else if(type === "table") {
       const rows: string[][] = [];
       const lines = content.trim().split('\n');
@@ -268,13 +377,16 @@ const tools: Record<string, (args: ToolArgs) => Promise<string | string[]>> = {
       });
 
     } else {
-      children.push({
-        object: "block",
-        type: type,
-        [type]: {
-          rich_text: [{ type: "text", text: { content: content } }]
-        }
-      });
+      const chunks = chunkString(content, 1800);
+      for(const chunk of chunks) {
+        children.push({
+          object: "block",
+          type: type,
+          [type]: {
+            rich_text: [{ type: "text", text: { content: chunk } }]
+          }
+        });
+      }
     }
 
     try {
@@ -313,6 +425,100 @@ const tools: Record<string, (args: ToolArgs) => Promise<string | string[]>> = {
       return pages.join("\n");
     } catch(e: any) {
       return `Error listing sub-pages: ${e.message}`;
+    }
+  },
+
+  read_page_content: async ({ page_id }) => {
+    try {
+      const response = await notion.blocks.children.list({ block_id: page_id });
+      const content: string[] = [];
+      for(const block of response.results as any[]) {
+        const block_type = block.type;
+        if(block_type === "paragraph") {
+          const text = block.paragraph.rich_text.map((t: any) => t.plain_text).join("");
+          if(text) content.push(text);
+        } else if(["heading_1", "heading_2", "heading_3"].includes(block_type)) {
+          const text = block[block_type].rich_text.map((t: any) => t.plain_text).join("");
+          if(text) content.push(`[${block_type.toUpperCase()}] ${text}`);
+        } else if(block_type === "bulleted_list_item") {
+          const text = block.bulleted_list_item.rich_text.map((t: any) => t.plain_text).join("");
+          if(text) content.push(`- ${text}`);
+        } else if(block_type === "code") {
+          const text = block.code.rich_text.map((t: any) => t.plain_text).join("");
+          const lang = block.code.language;
+          content.push(`\x60\x60\x60${lang}\n${text}\n\x60\x60\x60`);
+        }
+      }
+
+      if(content.length === 0) return "Page is empty or contains unsupported block types.";
+      return content.join("\n\n");
+    } catch(e: any) {
+      return `Error reading page: ${e.message}`;
+    }
+  },
+
+  list_databases: async ({}) => {
+    try {
+      const response = await notion.search({
+        filter: { value: "database", property: "object" }
+      });
+      const dbs: string[] = [];
+      for(const result of response.results as any[]) {
+        let title = "Untitled";
+        if(result.title) {
+          title = result.title.map((t: any) => t.plain_text).join("");
+        }
+        dbs.push(`- ${title} (ID: ${result.id})`);
+      }
+
+      if(dbs.length === 0) return "No accessible databases found. Make sure to share them with the integration.";
+      return dbs.join("\n");
+    } catch(e: any) {
+      return `Error listing databases: ${e.message}`;
+    }
+  },
+
+  query_database: async ({ database_id, query_filter }) => {
+    try {
+      const args: any = { database_id };
+      if(query_filter) {
+        try {
+          args.filter = typeof query_filter === "string" ? JSON.parse(query_filter) : query_filter;
+        } catch(e) {
+          return "Error: Invalid JSON for query_filter.";
+        }
+      }
+
+      const response = await notion.databases.query(args);
+      const items: string[] = [];
+      for(const page of response.results as any[]) {
+        let title = "Untitled";
+        const props = page.properties;
+        for(const name in props) {
+          if(props[name].id === "title") {
+            const title_list = props[name].title;
+            if(title_list) {
+              title = title_list.map((t: any) => t.plain_text).join("");
+            }
+            break;
+          }
+        }
+        items.push(`- ${title} (ID: ${page.id})`);
+      }
+
+      if(items.length === 0) return "No items found in database.";
+      return items.join("\n");
+    } catch(e: any) {
+      return `Error querying database: ${e.message}`;
+    }
+  },
+
+  delete_block: async ({ block_id }) => {
+    try {
+      await notion.blocks.delete({ block_id: block_id });
+      return `Successfully deleted block ${block_id}`;
+    } catch(e: any) {
+      return `Error deleting block: ${e.message}`;
     }
   },
 
@@ -370,6 +576,27 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: "search_memory",
+        description: "Searches the agent's internal memory using Semantic-like Keyword Search (FTS).",
+        inputSchema: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: "The search term to look for. Supports partial matches." },
+          },
+          required: ["query"],
+        },
+      },
+      {
+        name: "get_recent_memories",
+        description: "Retrieves the most recent memories.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            limit: { type: "number", default: 5 },
+          },
+        },
+      },
+      {
         name: "create_page",
         description: "Creates a new sub-page in Notion.",
         inputSchema: {
@@ -420,6 +647,48 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             parent_id: { type: "string" }
           },
+        },
+      },
+      {
+        name: "read_page_content",
+        description: "Reads the content of a Notion page and returns a simplified text representation.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            page_id: { type: "string" }
+          },
+          required: ["page_id"],
+        },
+      },
+      {
+        name: "list_databases",
+        description: "Lists all databases shared with the integration.",
+        inputSchema: {
+          type: "object",
+          properties: {},
+        },
+      },
+      {
+        name: "query_database",
+        description: "Queries a database and returns its items.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            database_id: { type: "string" },
+            query_filter: { type: "string", description: "Optional JSON string for Notion filter object." }
+          },
+          required: ["database_id"],
+        },
+      },
+      {
+        name: "delete_block",
+        description: "Deletes (archives) a block or page.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            block_id: { type: "string" }
+          },
+          required: ["block_id"],
         },
       },
       {
