@@ -2,7 +2,7 @@
 
 ## Phase 1: Analysis & Configuration
 - [x] Task: Analyze `node/scripts/release.ts` and `prepare-release.yml` to confirm the exact git tag format (Found: `REL-*`). [5734e97]
-- [ ] Task: Define the `create-github-release.yml` workflow structure, ensuring it handles both stable and pre-releases correctly based on the tag pattern.
+- [x] Task: Define the `create-github-release.yml` workflow structure [0994f8b], ensuring it handles both stable and pre-releases correctly based on the tag pattern.
 - [ ] Task: Conductor - User Manual Verification 'Analysis & Configuration' (Protocol in workflow.md)
 
 ## Phase 2: Implementation
