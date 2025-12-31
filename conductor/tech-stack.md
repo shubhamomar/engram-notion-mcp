@@ -25,6 +25,6 @@
 - **Python:** [`sqlite3`](https://docs.python.org/3/library/sqlite3.html) - Standard library SQLite module.
 
 ## Tools
-- **Environment Variables:**
+- **CI/CD:** GitHub Actions for automated testing, versioning, publishing, and release notes generation.- **Environment Variables:**
   - Node: [`dotenv`](https://github.com/motdotla/dotenv)
   - Python: [`python-dotenv`](https://github.com/theskumar/python-dotenv)
