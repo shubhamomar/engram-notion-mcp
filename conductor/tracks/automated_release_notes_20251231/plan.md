@@ -1,7 +1,7 @@
 # Plan: Automated GitHub Release Notes
 
 ## Phase 1: Analysis & Configuration
-- [ ] Task: Analyze `node/scripts/release.ts` and `prepare-release.yml` to confirm the exact git tag format (e.g., `v1.0.0` or `1.0.0`).
+- [x] Task: Analyze `node/scripts/release.ts` and `prepare-release.yml` to confirm the exact git tag format (Found: `REL-*`). [5734e97]
 - [ ] Task: Define the `create-github-release.yml` workflow structure, ensuring it handles both stable and pre-releases correctly based on the tag pattern.
 - [ ] Task: Conductor - User Manual Verification 'Analysis & Configuration' (Protocol in workflow.md)
 
