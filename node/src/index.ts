@@ -103,7 +103,32 @@ const get_db_adapter = (dbPath: string): DBAdapter => {
     console.log("\x1b[33m%s\x1b[0m", "ℹ️  Tip: This MCP server runs 3x faster with Bun! Try: bunx engram-notion-mcp");
 
     // @ts-ignore
-    const Database = require("better-sqlite3");
+    let Database;
+    try {
+      Database = require("better-sqlite3");
+    } catch(e: any) {
+      console.error("\x1b[31m%s\x1b[0m", `
+❌ Critical Dependency Missing: 'better-sqlite3' could not be loaded.
+
+Cause:
+This usually happens when the native SQLite module fails to compile on your system
+(common on Windows without build tools) and no prebuilt binary is available for your Node.js version.
+
+Solution:
+1. Use Bun (Recommended):
+   bunx engram-notion-mcp  (Includes native SQLite support out-of-the-box)
+
+2. Use older Node.js LTS version:
+   Node v20 or v22 (Prebuilt binaries are often available)
+
+3. Install Build Tools:
+   - Windows: npm install --global --production windows-build-tools
+   - Linux/Mac: Ensure 'python3' and C++ compiler ('gcc'/'clang') are installed.
+
+Original Error: ${e.message}
+`);
+      process.exit(1);
+    }
     const db = new Database(dbPath);
 
     // Init FTS5 for Node (better-sqlite3 usually bundles it)
